@@ -5,12 +5,14 @@ class NoModelForItemException(Exception):
     """
     pass
 
+
 class NoItemForModelException(Exception):
     """
     Raises if there is a model object that does not have a
     corresponding scrapy.Item.
     """
     pass
+
 
 class KeyMappingException(Exception):
     """
@@ -25,8 +27,27 @@ class KeyMappingException(Exception):
     """
     pass
 
+
 class MissingPrimaryKeyValueException(Exception):
     """
     Raises if a model objects is created which has some primary_keys missing that do not have a default value.
+    """
+    pass
+
+
+class NoRelationshipException(Exception):
+    """
+    Raises if a scrapy.Items contains another scrapy.Items but in the model there is no relationship defined
+    for those Items.
+    Example:
+        class Person(Base):
+            name = Column(String(255), primary_key=True)
+
+        class Account(Base):
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            person_name = Column(String(255), ForeignKey("persons.name"))
+            person = relationship("Person")
+
+        Only then the Items AccountItem(person = PersonItem(...)) sucessfully passes the pipeline.
     """
     pass

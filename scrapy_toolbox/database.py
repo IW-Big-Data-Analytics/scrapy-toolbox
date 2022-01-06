@@ -12,6 +12,7 @@ import os
 
 DeclarativeBase = declarative_base()
 
+
 # https://www.python.org/download/releases/2.2/descrintro/#__new__
 class Singleton(object):
     def __new__(cls, *args, **kwds):
@@ -21,8 +22,10 @@ class Singleton(object):
         cls.__it__ = it = object.__new__(cls)
         it.init(*args, **kwds)
         return it
+
     def init(self, *args, **kwds):
         pass
+
 
 class DatabasePipeline(Singleton):
     def __init__(self, settings, items=None, model=None, database=None, database_dev=None):
@@ -65,7 +68,8 @@ class DatabasePipeline(Singleton):
         DeclarativeBase.metadata.create_all(engine, checkfirst=True)
 
     def create_session(self, engine):
-        session = sessionmaker(bind=engine, autoflush=False)() # autoflush=False: "This is useful when initializing a series of objects which involve existing database queries, where the uncompleted object should not yet be flushed." for instance when using the Association Object Pattern
+        session = sessionmaker(bind=engine,
+                               autoflush=False)()  # autoflush=False: "This is useful when initializing a series of objects which involve existing database queries, where the uncompleted object should not yet be flushed." for instance when using the Association Object Pattern
         return session
 
     def spider_closed(self, spider):
@@ -98,4 +102,3 @@ class DatabasePipeline(Singleton):
         finally:
             self.session.close()
         return item
-
