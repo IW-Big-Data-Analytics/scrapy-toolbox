@@ -1,4 +1,4 @@
-from inspect import getmembers, isclass  # Get all classes from a *.py-script
+from inspect import getmembers  # Get all classes from a *.py-script
 from scrapy import Item
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 
@@ -7,6 +7,13 @@ class ItemsModelMapper:
 
     def __init__(self, items, model):
         """
+        Classes in module "model" have to extend DeclarativeMeta.
+        Models have to be defined like:
+
+        Base = declarative_base()
+        class Bla(Base):
+            ...
+
         :param items: module items.py from current project with scrapy.Items.
         :param model: module models.py from current project with SQLAlchemy objects.
         """
