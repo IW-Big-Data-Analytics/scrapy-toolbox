@@ -3,12 +3,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy.inspection import inspect  # Get PKs from model-class
 from sqlalchemy.orm import object_mapper
 from .mapper import ItemsModelMapper
 import os
 
 DeclarativeBase = declarative_base()
+
 
 # https://www.python.org/download/releases/2.2/descrintro/#__new__
 class Singleton(object):
@@ -19,8 +22,10 @@ class Singleton(object):
         cls.__it__ = it = object.__new__(cls)
         it.init(*args, **kwds)
         return it
+
     def init(self, *args, **kwds):
         pass
+
 
 class DatabasePipeline(Singleton):
     def __init__(self, settings, items=None, model=None, database=None, database_dev=None):
@@ -63,18 +68,30 @@ class DatabasePipeline(Singleton):
         DeclarativeBase.metadata.create_all(engine, checkfirst=True)
 
     def create_session(self, engine):
-        session = sessionmaker(bind=engine, autoflush=False)() # autoflush=False: "This is useful when initializing a series of objects which involve existing database queries, where the uncompleted object should not yet be flushed." for instance when using the Association Object Pattern
+        session = sessionmaker(bind=engine,
+                               autoflush=False)()  # autoflush=False: "This is useful when initializing a series of objects which involve existing database queries, where the uncompleted object should not yet be flushed." for instance when using the Association Object Pattern
         return session
 
     def spider_closed(self, spider):
         self.session.close()
 
     def process_item(self, item, spider):
-        obj = self.mapper.map_to_model(item=item, sess=self.session)
+        obj: DeclarativeMeta = self.mapper.map_to_model(item=item)
+        model_class = obj.__class__
+        primary_keys = [key.name for key in inspect(model_class).primary_key]
+        if not set(primary_keys).issubset(set(list(item.keys()))):
+            item = model_class(**{i: item[i] for i in item})
+            return item
+        filter_param = {item_id: item[item_id] for item_id in primary_keys}
+        item_by_id = self.session.query(model_class).filter_by(**filter_param).first()
+        if item_by_id is None:
+            obj = model_class(**{i: item[i] for i in item})
+        else:
+            obj = item_by_id
         try:
             self.session.add(obj)
             self.session.commit()
-            
+
             # Set potentially missing primary keys (autoincrement) for the item
             mapper = object_mapper(obj)
             for key, value in zip(mapper.primary_key, mapper.primary_key_from_instance(obj)):
@@ -85,4 +102,3 @@ class DatabasePipeline(Singleton):
         finally:
             self.session.close()
         return item
-
