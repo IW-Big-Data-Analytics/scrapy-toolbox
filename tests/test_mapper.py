@@ -2,6 +2,7 @@ from scrapy_toolbox.mapper import ItemsModelMapper
 from tests.test_resources.items.person_items import person_items, person_items_missing_hometown
 from tests.test_resources.models import person_model
 from tests.test_resources.models.person_model import Person, Name, Hometown
+from scrapy_toolbox.exceptions import KeyMappingException
 import pytest
 from typing import Final
 
@@ -18,7 +19,6 @@ def person_items_missing_hometown():
     return person_items_missing_hometown
 
 class TestItemsModelMapperInit:
-
     def test_for_each_model_mapping(self, person_items, person_model):
         """Tests if there is a mapping for each model class.
         """
