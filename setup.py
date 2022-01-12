@@ -13,8 +13,8 @@ setuptools.setup(
     url="https://github.com/janwendt/scrapy-toolbox",
     download_url="https://github.com/janwendt/scrapy-toolbox/archive/0.3.4.tar.gz",
     packages=setuptools.find_packages(),
-    entry_points = {
-        "console_scripts": ["scrapy-toolbox=scrapy_toolbox.command_line:main"],
+    entry_points={
+        "console_scripts": ["scrapy-toolbox=scrapy_toolbox.command_line:cli"],
     },
     install_requires=[
         "scrapy",

@@ -1,0 +1,11 @@
+import scrapy
+from scrapy_toolbox.error_handling import ErrorCatcher
+
+
+class $classname(scrapy.Spider, metaclass=ErrorCatcher):
+    name = '$name'
+    allowed_domains = ['$domain']
+    start_urls = ['http://$domain/']
+
+    def parse(self, response):
+        pass

@@ -1,0 +1,6 @@
+from sqlalchemy import Column, Integer
+import scrapy_toolbox.database as db
+
+class ${ProjectName}(db.DeclarativeBase):
+    __tablename__ = "${project_name}"
+    id = Column(Integer, primary_key=True, autoincrement=True)

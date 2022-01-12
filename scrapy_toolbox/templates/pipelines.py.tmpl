@@ -1,0 +1,7 @@
+from scrapy_toolbox.database import DatabasePipeline
+import ${project_name}.items as items
+import ${project_name}.models as models
+
+class ${ProjectName}Pipeline(DatabasePipeline):
+    def __init__(self, settings):
+        super().__init__(settings, items, models)
