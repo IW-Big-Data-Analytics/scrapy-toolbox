@@ -3,7 +3,14 @@ class NoModelForItemException(Exception):
     Raises if there is a scrapy.Item that does not have a
     corresponding model object.
     """
-    pass
+    def __init__(self, diff: set):
+        self.diff = diff
+        super().__init__()
+
+    def __str__(self):
+        diff_str = ", ".join(self.diff)
+        message = f"No corresponding model objects for items {diff_str}. Please create these Items"
+        return message
 
 
 class NoItemForModelException(Exception):
@@ -25,7 +32,19 @@ class KeyMappingException(Exception):
             ids = Column(String(255))
     Keys from AbcItem and Abc do not match.
     """
-    pass
+    def __init__(self, diff, item_name):
+        self.diff = diff
+        self.item_name = item_name
+        super().__init__()
+
+    def __str__(self):
+        keys = ", ".join(self.diff)
+        message = f"""Error for item {self.item_name} and model {self.item_name.replace("Item", "")}. \n 
+                Keys {keys} have no match in model columns.\n
+                Please check for typos or add these colums."""
+        return message
+
+
 
 
 class MissingPrimaryKeyValueException(Exception):
