@@ -14,6 +14,8 @@ location_of_file: Path = Path(__file__)
 path_templates = location_of_file.parent.parent.joinpath("templates")
 
 
+# Use python setup.py develop to test.
+
 def _render_template(file, **kwargs) -> Tuple[str, str]:
     with open(file, "r") as f:
         raw = f.read()
