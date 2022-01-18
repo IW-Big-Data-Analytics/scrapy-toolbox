@@ -4,7 +4,7 @@ from sqlalchemy.inspection import inspect
 from scrapy import Item
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from typing import Dict, Tuple
-from exceptions import NoModelForItemException, KeyMappingException
+from exceptions import NoItemForModelException, KeyMappingException
 
 
 class ItemsModelMapper:
@@ -23,20 +23,20 @@ class ItemsModelMapper:
         """
         self.items = items
         self.model = model
-        self.item_classes = getmembers(self.items, isclass)
+        self.item_classes = getmembers(self.items, lambda x: isclass(x) and issubclass(x, scrapy.Item))
         self.model_col: Dict[str, DeclarativeMeta] = {
             cls_name + "Item": cls_obj
             for cls_name, cls_obj in getmembers(self.model, isclass)
             if isinstance(cls_obj, DeclarativeMeta) and not cls_name == "Base"
         }
 
+        # Do checks
         item_error, diff = self._check_item_mapping(
             item_names=dict(self.item_classes).keys(),
             mapper_item_names=self.model_col.keys()
         )
-        # Do checks
         if item_error:
-            raise NoModelForItemException(diff=diff)
+            raise NoItemForModelException(diff)
 
         for item_name, item_class in self.item_classes:
             key_error, diff = self._check_keys(
@@ -68,8 +68,8 @@ class ItemsModelMapper:
         :param mapper_item_names: Names from the dictionary that got created in __init__
         :return: bool if all models have a item, all models that dont have a item
         """
-        mapping_error = not set(item_names).issubset(set(mapper_item_names))
-        difference = set(item_names).difference(set(mapper_item_names))
+        mapping_error = not set(mapper_item_names).issubset(set(item_names))
+        difference = set(mapper_item_names).difference(set(item_names))
         return mapping_error, difference
 
     def _check_keys(self, model_class, item_class) -> Tuple[bool, set]:

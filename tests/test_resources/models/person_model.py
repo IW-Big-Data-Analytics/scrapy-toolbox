@@ -2,6 +2,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column
 from sqlalchemy import String, Float, Integer
 from sqlalchemy.sql.schema import ForeignKey
+from sqlalchemy.orm import relationship
 from typing import Final
 
 Base = declarative_base()
@@ -29,4 +30,5 @@ class Person(Base):
     weight = Column(Float, primary_key=True)
     height = Column(Float, primary_key=True)
     shirt_color = Column(String(255), primary_key=True)
+    name = relationship("Name")
 

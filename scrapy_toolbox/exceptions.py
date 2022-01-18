@@ -18,7 +18,14 @@ class NoItemForModelException(Exception):
     Raises if there is a model object that does not have a
     corresponding scrapy.Item.
     """
-    pass
+    def __init__(self, diff: set):
+        self.diff = diff
+        super().__init__()
+
+    def __str__(self):
+        diff_str = ", ".join(self.diff)
+        message = f"No corresponding item objects for models {diff_str}. Please create these items"
+        return message
 
 
 class KeyMappingException(Exception):
