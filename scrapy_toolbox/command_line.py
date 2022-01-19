@@ -29,7 +29,7 @@ def cli():
 
 
 @cli.command()
-@click.argument("spider")
+@click.argument("spider", help="spidername to check output", required=True)
 def check_output(spider):
     """
     Check output for spider.
@@ -39,7 +39,7 @@ def check_output(spider):
         subprocess.check_output(["scrapy", "crawl", spider, "-a process_errors=True"])
 
 @cli.command()
-@click.argument("projectname", required=True)
+@click.argument("projectname", help="Name of new project", required=True)
 def startproject(projectname: str):
     """
     Extends the scrapy startproject command by adding specific files and lines for scrapy-toolbox.
@@ -68,8 +68,8 @@ def startproject(projectname: str):
 
 
 @cli.command()
-@click.argument("spidername", nargs=1)
-@click.argument("domain", default="Example.com")
+@click.argument("spidername", help="Name of new spider", nargs=1)
+@click.argument("domain", help="Domain to scrape", default="Example.com")
 def genspider(spidername: str, domain: str):
     """
     Extends scrapy genspider command and add imports and metaclass to spider.
