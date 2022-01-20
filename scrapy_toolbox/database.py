@@ -57,9 +57,9 @@ class DatabasePipeline(Singleton):
 
     def create_engine(self):
         if "PRODUCTION" in os.environ:
-            engine = create_engine(URL(**self.database))
+            engine = create_engine(URL.create(**self.database))
         else:
-            engine = create_engine(URL(**self.database_dev))
+            engine = create_engine(URL.create(**self.database_dev))
         if not database_exists(engine.url):
             create_database(engine.url)
         return engine
@@ -68,8 +68,11 @@ class DatabasePipeline(Singleton):
         DeclarativeBase.metadata.create_all(engine, checkfirst=True)
 
     def create_session(self, engine):
-        session = sessionmaker(bind=engine,
-                               autoflush=False)()  # autoflush=False: "This is useful when initializing a series of objects which involve existing database queries, where the uncompleted object should not yet be flushed." for instance when using the Association Object Pattern
+        # autoflush=False:
+        # "This is useful when initializing a series of objects which involve existing database queries,
+        # where the uncompleted object should not yet be flushed." for instance when using the Association
+        # Object Pattern
+        session = sessionmaker(bind=engine,autoflush=False)()
         return session
 
     def spider_closed(self, spider):
