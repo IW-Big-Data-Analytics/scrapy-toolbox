@@ -5,6 +5,7 @@ from scrapy import Item
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from typing import Dict, Tuple
 from exceptions import NoItemForModelException, KeyMappingException
+from sqlalchemy.inspection import inspect  # Get PKs from model-class
 
 
 class ItemsModelMapper:
@@ -50,16 +51,20 @@ class ItemsModelMapper:
     def map_to_model(self, item: Item):
         """
         Get scrapy.Item from DatabasePipeline.process_item function and return the corresponding
-        model from module model.
+        model from module model. This procedure is done recursive for each item.
         :param item: The scrapy.Item from DatabasePipeline.process_item.
         :return: corresponding model object.
         """
+        model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
+
         for key in item:
             if isinstance(item[key], Item):
                 item[key] = self.map_to_model(item[key])
-        model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
         model_object: model_class = model_class(**{i: item[i] for i in item})
         return model_object
+
+    def _check_primary_keys_non_null(self, item, model_class) -> Tuple[bool, str]:
+        pass
 
     def _check_item_mapping(self, item_names, mapper_item_names) -> Tuple[bool, set]:
         """

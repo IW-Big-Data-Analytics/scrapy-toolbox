@@ -58,7 +58,14 @@ class MissingPrimaryKeyValueException(Exception):
     """
     Raises if a model objects is created which has some primary_keys missing that do not have a default value.
     """
-    pass
+    def __init__(self, diff):
+        self.diff = diff
+        super().__init__()
+
+    def __str__(self):
+        keys = ", ".join(self.diff)
+        message = f"Primary keys {keys} are None but do not have default values."
+        return message
 
 
 class NoRelationshipException(Exception):
