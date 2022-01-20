@@ -4,8 +4,7 @@ from sqlalchemy.inspection import inspect
 from scrapy import Item
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from typing import Dict, Tuple
-from exceptions import NoItemForModelException, KeyMappingException
-from sqlalchemy.inspection import inspect  # Get PKs from model-class
+from exceptions import NoItemForModelException, KeyMappingException, MissingPrimaryKeyValueException
 
 
 class ItemsModelMapper:
@@ -30,11 +29,10 @@ class ItemsModelMapper:
             for cls_name, cls_obj in getmembers(self.model, isclass)
             if isinstance(cls_obj, DeclarativeMeta) and not cls_name == "Base"
         }
-
         # Do checks
         item_error, diff = self._check_item_mapping(
-            item_names=dict(self.item_classes).keys(),
-            mapper_item_names=self.model_col.keys()
+            item_names=set(dict(self.item_classes).keys()),
+            mapper_item_names=set(self.model_col.keys())
         )
         if item_error:
             raise NoItemForModelException(diff)
@@ -47,7 +45,6 @@ class ItemsModelMapper:
             if key_error:
                 raise KeyMappingException(diff=diff, item_name=item_name)
 
-
     def map_to_model(self, item: Item):
         """
         Get scrapy.Item from DatabasePipeline.process_item function and return the corresponding
@@ -56,28 +53,58 @@ class ItemsModelMapper:
         :return: corresponding model object.
         """
         model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
-
+        key_error, diff = self._check_primary_keys_not_null(item, model_class)
+        if key_error:
+            raise MissingPrimaryKeyValueException(diff)
         for key in item:
             if isinstance(item[key], Item):
                 item[key] = self.map_to_model(item[key])
         model_object: model_class = model_class(**{i: item[i] for i in item})
         return model_object
 
-    def _check_primary_keys_non_null(self, item, model_class) -> Tuple[bool, str]:
-        pass
 
-    def _check_item_mapping(self, item_names, mapper_item_names) -> Tuple[bool, set]:
+    def _check_primary_keys_not_null(self, item: Item, model_class: DeclarativeMeta) -> Tuple[bool, set]:
+        """
+        Check if all primary keys without default value or auto_increment have values.
+        :param item: scrapy.Item that is processed
+        :param model_class: class of the corresponding model.
+        :return: True if there is a pk that is null, set with pks that are null.
+        """
+        relationships = {rel for rel in inspect(model_class).relationships}
+        primary_keys = {key.name for key in inspect(model_class).primary_key
+                        if key.default is None and key.autoincrement is not True}
+        arguments_none = set(item.fields.keys()).difference(set(item.keys()))
+        for relationship in relationships:
+            relationship_key = relationship.key
+            # Get corresponding columns for the relationship that are PKs.
+            locale_columns_pk = {col.name for col in relationship.local_columns
+                                 if col.primary_key is True}
+            # If the relationship column has a value remove all corresponding pks
+            # from set with arguments from item that are none.
+            if relationship_key not in arguments_none:
+                primary_keys = primary_keys.difference(locale_columns_pk)
+                arguments_none = arguments_none.difference(locale_columns_pk)
+            else:
+                primary_key_error = not locale_columns_pk.issubset(arguments_none)
+                diff = {relationship_key}
+                if primary_key_error:
+                    return True, diff
+        primary_key_error = not primary_keys.issubset(arguments_none)
+        diff = primary_keys.intersection(arguments_none)
+        return primary_key_error, diff
+
+    def _check_item_mapping(self, item_names: set, mapper_item_names: set) -> Tuple[bool, set]:
         """
         Check if for each model class there exists a corresponding item.
         :param item_names: Names from the Item classes for current project
         :param mapper_item_names: Names from the dictionary that got created in __init__
         :return: bool if all models have a item, all models that dont have a item
         """
-        mapping_error = not set(mapper_item_names).issubset(set(item_names))
-        difference = set(mapper_item_names).difference(set(item_names))
+        mapping_error = not mapper_item_names.issubset(item_names)
+        difference = mapper_item_names.difference(item_names)
         return mapping_error, difference
 
-    def _check_keys(self, model_class, item_class) -> Tuple[bool, set]:
+    def _check_keys(self, model_class: DeclarativeMeta, item_class: scrapy.Item) -> Tuple[bool, set]:
         """
         check if for each item the corresponding model has the same keys.
         :param model_class: corresponding model class
@@ -91,5 +118,3 @@ class ItemsModelMapper:
         key_error = not item_fields.issubset(model_columns)
         diff = item_fields.difference(model_fields)
         return key_error, diff
-
-
