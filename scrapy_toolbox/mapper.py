@@ -4,7 +4,7 @@ from sqlalchemy.inspection import inspect
 from scrapy import Item
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from typing import Dict, Tuple
-from exceptions import NoItemForModelException, KeyMappingException, MissingPrimaryKeyValueException
+from exceptions import NoItemForModelException, KeyMappingException, MissingPrimaryKeyValueException, NoRelationshipException
 
 
 class ItemsModelMapper:
@@ -53,14 +53,35 @@ class ItemsModelMapper:
         :return: corresponding model object.
         """
         model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
-        key_error, diff = self._check_primary_keys_not_null(item, model_class)
+        model_relationships = {r.key for r in inspect(model_class).relationships}
+        relationship_error, diff_relationship = self._check_relationships_are_items_or_none(model_relationships, item)
+        key_error, diff_key = self._check_primary_keys_not_null(item, model_class)
+        if relationship_error:
+            raise NoRelationshipException(diff_relationship)
         if key_error:
-            raise MissingPrimaryKeyValueException(diff)
+            raise MissingPrimaryKeyValueException(diff_key)
         for key in item:
             if isinstance(item[key], Item):
                 item[key] = self.map_to_model(item[key])
         model_object: model_class = model_class(**{i: item[i] for i in item})
         return model_object
+
+
+    def _check_relationships_are_items_or_none(self, relationships: set, item: Item) -> Tuple[bool, set]:
+        """
+        Check wether all relationships from model are either None or scrapy.Item.
+        :param relationships: set with all relationships from model_class.
+        :param item: item that is getting processed
+        :return: bool that is True when a relationship is not set correctly, all keys that are not set correctly
+        """
+        relationships_not_null = relationships.intersection(set(item.keys()))
+        relationship_error = False
+        for relationship in relationships_not_null.copy():
+            if isinstance(item[relationship], Item):
+                relationships_not_null.remove(relationship)
+            else:
+                relationship_error = True
+        return relationship_error, relationships_not_null
 
 
     def _check_primary_keys_not_null(self, item: Item, model_class: DeclarativeMeta) -> Tuple[bool, set]:
