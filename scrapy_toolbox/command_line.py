@@ -23,27 +23,25 @@ def _render_template(file, **kwargs) -> Tuple[str, str]:
     path = os.path.basename(file).replace(".tmpl", "")
     return content, path
 
+
 @click.group()
 def cli():
     pass
 
 
 @cli.command()
-@click.argument("spider", help="spidername to check output", required=True)
+@click.argument("spider", help="spider name to check output", required=True)
 def check_output(spider):
     """
     Check output for spider.
-    :param spider: name of spider.
     """
-    if spider:
-        subprocess.check_output(["scrapy", "crawl", spider, "-a process_errors=True"])
+    subprocess.check_output(["scrapy", "crawl", spider, "-a process_errors=True"])
 
 @cli.command()
 @click.argument("projectname", help="Name of new project", required=True)
 def startproject(projectname: str):
     """
-    Extends the scrapy startproject command by adding specific files and lines for scrapy-toolbox.
-    :param projectname: Name of the project.
+    Generate project for scrapy-toolbox.
     """
     if not path_templates.exists():
         raise FileNotFoundError("Template File is missing.")
@@ -72,9 +70,7 @@ def startproject(projectname: str):
 @click.argument("domain", help="Domain to scrape", default="Example.com")
 def genspider(spidername: str, domain: str):
     """
-    Extends scrapy genspider command and add imports and metaclass to spider.
-    :param spidername: Name of the spider.
-    :param domain: Domain for spider.
+    Create spider that supports error handling.
     """
     assert "scrapy.cfg" in os.listdir(), "not a scrapy directory. Use scrapy-toolbox startproject to create one " \
                                          "or navigate to project directory."
