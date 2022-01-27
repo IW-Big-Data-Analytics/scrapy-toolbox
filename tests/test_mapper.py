@@ -57,9 +57,8 @@ class TestItemsModelMapperInit:
             person_items_missing_hometown (ModuleType): Module containing the items but missing
                 a HometownItem.
         """
-        with pytest.raises(NoItemForModelException) as e:
+        with pytest.raises(NoItemForModelException):
             mapper: Final[ItemsModelMapper] = ItemsModelMapper(
                 items=person_items_missing_hometown,
                 model=person_model
             )
-            assert "No corresponding item objects for models" in e

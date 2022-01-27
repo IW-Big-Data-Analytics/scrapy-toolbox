@@ -1,4 +1,9 @@
 class MapperException(Exception):
+    """
+    Basic Template for constructor for all exceptions.
+    Get names of objects that caused the error and put them in string for
+    error message in __str__ method.
+    """
     def __init__(self, diff: set):
         self.diff_str = ", ".join(diff)
         super().__init__()
