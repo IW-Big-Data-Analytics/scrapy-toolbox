@@ -10,6 +10,8 @@ templates_all = ["models.py.tmpl",
                  "pipelines.py.tmpl",
                  "settings.py.tmpl"]
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
 location_of_file: Path = Path(__file__)
 path_templates = location_of_file.parent.parent.joinpath("templates")
 
@@ -24,24 +26,26 @@ def _render_template(file, **kwargs) -> Tuple[str, str]:
     return content, path
 
 
-@click.group()
+@click.group(context_settings=CONTEXT_SETTINGS)
 def cli():
     pass
 
 
 @cli.command()
-@click.argument("spider", help="spider name to check output", required=True)
-def check_output(spider):
+@click.argument("spidername", required=True, nargs=1)
+def check_output(spidername: str):
     """
     Check output for spider.
+    spidername: name of spider
     """
-    subprocess.check_output(["scrapy", "crawl", spider, "-a process_errors=True"])
+    subprocess.check_output(["scrapy", "crawl", spidername, "-a process_errors=True"])
 
 @cli.command()
-@click.argument("projectname", help="Name of new project", required=True)
+@click.argument("projectname", required=True, nargs=1)
 def startproject(projectname: str):
     """
     Generate project for scrapy-toolbox.
+    projectname: Name of new project
     """
     if not path_templates.exists():
         raise FileNotFoundError("Template File is missing.")
@@ -66,11 +70,13 @@ def startproject(projectname: str):
 
 
 @cli.command()
-@click.argument("spidername", help="Name of new spider", nargs=1)
-@click.argument("domain", help="Domain to scrape", default="Example.com")
+@click.argument("spidername", nargs=1)
+@click.argument("domain", default="Example.com", nargs=1)
 def genspider(spidername: str, domain: str):
     """
     Create spider that supports error handling.
+    spidername: name of new spider.
+    domain: domain to scrape (default: Example.com).
     """
     assert "scrapy.cfg" in os.listdir(), "not a scrapy directory. Use scrapy-toolbox startproject to create one " \
                                          "or navigate to project directory."
