@@ -1,5 +1,6 @@
 from scrapy import signals
 from sqlalchemy import Column, Integer, DateTime, Text, String
+from sqlalchemy.orm import Session
 from .database import DeclarativeBase
 from datetime import datetime
 import json
@@ -45,15 +46,14 @@ class ErrorSaving():
             "response_headers": json.dumps(dict(response.headers.to_unicode_dict())) if response else "",
             "response_body": response.body if response else ""
         })
-        session = spider.crawler.database_session
-        try:
-            session.add(e)
-            session.commit()
-        except:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+
+        with Session(spider.database_engine) as session:
+            try:
+                session.add(e)
+                session.commit()
+            except:
+                session.rollback()
+                raise
 
 class Error(DeclarativeBase):
     __tablename__ = "__errors"

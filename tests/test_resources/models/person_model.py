@@ -1,4 +1,4 @@
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy import Column
 from sqlalchemy import String, Float, Integer
 from sqlalchemy.sql.schema import ForeignKey
@@ -29,4 +29,9 @@ class Person(Base):
     weight = Column(Float, primary_key=True)
     height = Column(Float, primary_key=True)
     shirt_color = Column(String(255), primary_key=True)
+
+    name = relationship(Name) #many to one
+    hometown = relationship(Hometown)
+
+    
 

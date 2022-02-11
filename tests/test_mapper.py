@@ -1,18 +1,16 @@
+import importlib
 from scrapy_toolbox.mapper import ItemsModelMapper
-from tests.test_resources.items.person_items import person_items, person_items_missing_hometown
-from tests.test_resources.models import person_model
-from tests.test_resources.models.person_model import Person, Name, Hometown
 from scrapy_toolbox.exceptions import KeyMappingException
 import pytest
 from typing import Final
 
 @pytest.fixture
 def person_items():
-    return person_items
+    return importlib.import_module('tests.test_resources.items.person_items')
 
 @pytest.fixture
 def person_model():
-    return person_model
+    return importlib.import_module('tests.test_resources.models.person_model')
 
 @pytest.fixture
 def person_items_missing_hometown():

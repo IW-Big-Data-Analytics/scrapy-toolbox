@@ -5,7 +5,6 @@ from typing import Dict
 
 
 class ItemsModelMapper:
-
     def __init__(self, items, model):
         """
         Classes in module "model" have to extend DeclarativeMeta.
