@@ -3,6 +3,7 @@ from scrapy import signals
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.inspection import inspect
 from .mapper import ItemsModelMapper
@@ -10,6 +11,7 @@ from typing import Final, Type
 import os
 
 DeclarativeBase = declarative_base()
+
 
 # https://www.python.org/download/releases/2.2/descrintro/#__new__
 class Singleton(object):
@@ -20,6 +22,7 @@ class Singleton(object):
         cls.__it__ = it = object.__new__(cls)
         it.init(*args, **kwds)
         return it
+
     def init(self, *args, **kwds):
         pass
 
