@@ -60,7 +60,7 @@ class TestDatabasePipeline():
 
 
     @pytest.mark.usefixtures('setup_database', 'connection')
-    def test_unique_inserted_once(setup_database, connection):
+    def test_several_inserts(setup_database, connection):
         name_1: Final[Name] = Name(name='Bjarne')
         name_2: Final[Name] = Name(name="Simon")
         hometown: Final[Hometown] = Hometown(name='Weyhe', population=15000.0)
@@ -104,12 +104,19 @@ class TestDatabasePipeline():
             stored_person_1 = stored_persons[0]
             stored_person_2 = stored_persons[1]
 
+            assert stored_person_1.height == 185.0
+            assert stored_person_2.height == 182.0
+
             assert (stored_person_1.hometown == stored_person_2.hometown)
+
+            assert stored_person_1.name.id == 1
+            assert stored_person_2.name.id == 2
+
 
 
     # TODO: Fails
     @pytest.mark.usefixtures('setup_database', 'connection')
-    def test_duplicate_insert(setup_database, connection):
+    def test_hometown_inserted_once(setup_database, connection):
         name: Final[Name] = Name(name='Bjarne')
         hometown: Final[Hometown] = Hometown(name='Weyhe', population=15000.0)
         person_1: Final[Person] = Person(
