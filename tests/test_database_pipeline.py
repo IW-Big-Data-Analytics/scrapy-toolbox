@@ -36,7 +36,7 @@ class TestDatabasePipeline():
         person_items: Final[ModuleType] = importlib.import_module('tests.test_resources.items.person_items')
         person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
 
-        db_pipe: Final(DatabasePipeline) = DatabasePipeline(settings, items=person_items, model=person_model)
+        db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
         db_pipe.insert_into_db([person])
 
         with Session(bind=connection) as session:

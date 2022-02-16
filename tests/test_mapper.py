@@ -25,9 +25,9 @@ class TestItemsModelMapperInit:
             model=person_model
         )
 
-        assert mapper.model_col.get('NameItem') == Name
-        assert mapper.model_col.get('HometownItem') == Hometown
-        assert mapper.model_col.get('PersonItem') == Person
+        assert mapper.model_col.get('NameItem') == person_model.Name
+        assert mapper.model_col.get('HometownItem') == person_model.Hometown
+        assert mapper.model_col.get('PersonItem') == person_model.Person
 
     def test_only_model_classes_mapped(self, person_items, person_model):
         '''Tests that in the mapping dictionary only the classes
@@ -39,9 +39,9 @@ class TestItemsModelMapperInit:
         )
 
         assert len(mapper.model_col) == 3
-        assert mapper.model_col.get('NameItem') == Name
-        assert mapper.model_col.get('HometownItem') == Hometown
-        assert mapper.model_col.get('PersonItem') == Person
+        assert mapper.model_col.get('NameItem') == person_model.Name
+        assert mapper.model_col.get('HometownItem') == person_model.Hometown
+        assert mapper.model_col.get('PersonItem') == person_model.Person
 
 
     def test_missing_item_for_model(self, person_model, person_items_missing_hometown):
