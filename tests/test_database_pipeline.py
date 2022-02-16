@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from scrapy_toolbox.database import DatabasePipeline
 import importlib
 from tests.test_resources.models.person_model import Person, Name, Hometown
@@ -57,5 +58,42 @@ class TestDatabasePipeline():
             assert stored_person.hometown.name == 'Weyhe'
             assert stored_person.hometown.population == 15000.0
 
+    # TODO: Fails
+    @pytest.mark.usefixtures('setup_database', 'connection')
+    def test_duplicate_insert(setup_database, connection):
+        name: Final[Name] = Name(name='Bjarne')
+        hometown: Final[Hometown] = Hometown(name='Weyhe', population=15000.0)
+        person_1: Final[Person] = Person(
+            weight=80.5,
+            height=185.0,
+            shirt_color='red',
+            name=name,
+            hometown=hometown
+        )
+        person_2: Final[Person] = Person(
+            weight=80.5,
+            height=185.0,
+            shirt_color='red',
+            name=name,
+            hometown=hometown
+        )
 
-            
+        settings: Final[dict] = {
+            'DATABASE_DEV': {
+                'drivername': 'mysql+pymysql',
+                'username': 'root',
+                'password': 'admin',
+                'database': 'test',
+                'host': 'localhost',
+                'port': '3306'
+            }
+        }
+
+        person_items: Final[ModuleType] = importlib.import_module('tests.test_resources.items.person_items')
+        person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
+
+        db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
+        try:
+            db_pipe.insert_into_db([person_1, person_2])
+        except IntegrityError as e:
+            pytest.fail("Duplicate Insert in Database.")
