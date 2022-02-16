@@ -95,5 +95,5 @@ class TestDatabasePipeline():
         db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
         try:
             db_pipe.insert_into_db([person_1, person_2])
-        except IntegrityError as e:
+        except IntegrityError:
             pytest.fail("Duplicate Insert in Database.")
