@@ -16,4 +16,5 @@ class PersonItem(scrapy.Item):
     height = Field()
     weight = Field()
     shirt_color = Field()
+    hometown = Field()
 

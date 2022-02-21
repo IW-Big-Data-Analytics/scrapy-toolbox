@@ -32,9 +32,9 @@ class ItemsModelMapper:
         :param item: The scrapy.Item from DatabasePipeline.process_item.
         :return: corresponding model object.
         """
-        for key in item:
-            if isinstance(item[key], Item):
-                item[key] = self.map_to_model(item[key])
+        # for key in item:
+        #     if isinstance(item[key], Item):
+        #         item[key] = self.map_to_model(item[key])
         model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
         model_object: model_class = model_class(**{i: item[i] for i in item})
         return model_object

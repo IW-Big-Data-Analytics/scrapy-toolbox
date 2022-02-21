@@ -1,12 +1,11 @@
 import pytest
-from scrapy import Item
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from scrapy_toolbox.database import DatabasePipeline
 import importlib
-from scrapy_toolbox.mapper import ItemsModelMapper
 from tests.test_resources.models.person_model import Person, Name, Hometown
+from tests.test_resources.items.person_items import HometownItem, NameItem, PersonItem
 
 from typing import Final
 from types import ModuleType
@@ -63,17 +62,17 @@ class TestDatabasePipeline():
 
     @pytest.mark.usefixtures('setup_database', 'connection')
     def test_several_inserts(setup_database, connection):
-        name_1: Final[Name] = Name(name='Bjarne')
-        name_2: Final[Name] = Name(name="Simon")
-        hometown: Final[Hometown] = Hometown(name='Weyhe', population=15000.0)
-        person_1: Final[Person] = Person(
+        name_1: Final[NameItem] = NameItem(name='Bjarne')
+        name_2: Final[NameItem] = NameItem(name="Simon")
+        hometown: Final[HometownItem] = HometownItem(name='Weyhe', population=15000.0)
+        person_1: Final[Person] = PersonItem(
             weight=80.5,
             height=185.0,
             shirt_color='red',
             name=name_1,
             hometown=hometown
         )
-        person_2: Final[Person] = Person(
+        person_2: Final[Person] = PersonItem(
             weight=76,
             height=182.0,
             shirt_color='white',
@@ -97,7 +96,8 @@ class TestDatabasePipeline():
 
         db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
         # db_pipe.insert_into_db([person_1, person_2])
-        db_pipe.insert_into_db(person_1)
+        db_pipe.persist_item(person_1)
+        db_pipe.persist_item(person_2)
 
         with Session(bind=connection) as session:
             stored_persons = session.execute(
