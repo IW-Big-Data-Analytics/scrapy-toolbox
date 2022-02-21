@@ -40,11 +40,6 @@ class ItemsModelMapper:
         return model_object
 
 
-    def map_to_model(self, item):
-        model_class = self.model_col[item.__class__.__name__] # get model for item name
-        return model_class(**{i:item[i] for i in item})
-
-
     def get_model(self, item): 
         return self.model_col[item.__class__.__name__]
         # primary_keys = [key.name for key in inspect(model_class).primary_key]

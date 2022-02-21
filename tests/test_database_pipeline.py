@@ -1,9 +1,11 @@
 import pytest
+from scrapy import Item
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from scrapy_toolbox.database import DatabasePipeline
 import importlib
+from scrapy_toolbox.mapper import ItemsModelMapper
 from tests.test_resources.models.person_model import Person, Name, Hometown
 
 from typing import Final
@@ -94,7 +96,8 @@ class TestDatabasePipeline():
         person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
 
         db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
-        db_pipe.insert_into_db([person_1, person_2])
+        # db_pipe.insert_into_db([person_1, person_2])
+        db_pipe.insert_into_db(person_1)
 
         with Session(bind=connection) as session:
             stored_persons = session.execute(
@@ -155,4 +158,32 @@ class TestDatabasePipeline():
             pytest.fail("Duplicate Insert in Database.")
 
 
+    @pytest.mark.usefixtures('setup_database', 'connection')
+    def test_get_foreign_key_from_children(setup_database, connection):
+        name: Final[Name] = Name(name='Bjarne')
+        hometown: Final[Hometown] = Hometown(name='Weyhe', population=15000.0)
+        person_1: Final[Person] = Person(
+            weight=80.5,
+            height=185.0,
+            shirt_color='red',
+            name=name,
+            hometown=hometown
+        )
 
+        settings: Final[dict] = {
+            'DATABASE_DEV': {
+                'drivername': 'mysql+pymysql',
+                'username': 'root',
+                'password': 'admin',
+                'database': 'test',
+                'host': 'localhost',
+                'port': '3306'
+            }
+        }
+
+        person_items: Final[ModuleType] = importlib.import_module('tests.test_resources.items.person_items')
+        person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
+
+        db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
+
+        db_pipe.get_foreign_key_values(person_1)

@@ -5,7 +5,7 @@ from sqlalchemy.inspection import inspect
 from .mapper import ItemsModelMapper
 from typing import Final, Type
 
-from sqlalchemy import create_engine
+from sqlalchemy import Table, create_engine, ForeignKey, select
 from sqlalchemy.orm import Session
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL
@@ -44,7 +44,7 @@ class DatabasePipeline():
         if items and model:
            self.mapper = ItemsModelMapper(items=items, model=model)
 
-        self.items: Final[dict[Type, list]] = {}
+        self.existing_model_items: Final[dict[Type, set]] = {}
         self.item_counter: int = 0
 
     @classmethod
@@ -64,16 +64,58 @@ class DatabasePipeline():
 
 
     def process_item(self, item, spider):
-        model_for_item = self.mapper.get_model(item=item) 
-        self.items.setdefault(model_for_item.__table__, []).append(item)
-        self.item_counter += 1
-        if self.item_counter >= 500:
-            self.insert_into_db(self.items)
-            self.item_counter = 0
-            self.items = {}
+        model_item = self.mapper.map_to_model(item)
+        self.insert_into_db(model_item)
         
         
-    def insert_into_db(self, items):
+    def insert_into_db(self, model_item: Type):
         with Session(bind=self.engine) as session:
-            session.add_all(items)
-            session.commit()
+            for relationship in inspect(model_item.__class__).relationships:
+                rel_name: Final[str] = relationship.key
+                rel_obj: Final[Type] = model_item.__getattribute__(rel_name)
+
+
+                #checking for existence
+                object_exists: Final[bool] = False
+
+
+                if not object_exists:
+                    self.inset_into_db(rel_obj)
+
+
+
+        #     print('hallo')
+        # pass 
+
+
+
+
+
+        # with Session(bind=self.engine) as session:
+        #         model_item = self.mapper.get_model(item)
+        #         existing_model_items: Final[set] = self.existing_model_items[model_item.__table__]
+        #         #check if exists in existin
+        #         item_already_queried: Final[bool] = model_item in existing_model_items
+
+        #         if not item_already_queried:
+                    # existing_model_item = select(model_item.__table__)
+
+                    #  if not query
+                        # add to existing
+                        # add to session
+                            # add to existing
+                    
+                #commit added items
+
+    def get_foreign_key_values(self, model_item) -> dict:
+        #find foreign key classes
+        #check if values for foreign keys exist
+            # return value of column
+        #if not, add item
+        #return value of foreign key column
+        with Session(bind=self.engine) as session:
+            for foreign_key in model_item.__table__.foreign_keys:
+                fk_table: Final[Table] = foreign_key.column.table
+                fk_col_name: Final[str] = foreign_key.name
+            
+        pass
