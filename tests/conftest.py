@@ -17,9 +17,8 @@ def db_credentials() -> dict[str, str]:
         dict[str, str]: 
             Structure is the following:
                 {
-                    sqltype: ""
-                    driver: ""
-                    user: ""
+                    drivername: ""
+                    username: ""
                     password: ""
                     database: ""
                     host: ""
@@ -46,7 +45,7 @@ def connection(db_credentials):
         Engine: The created database engine.
     """
     engine: Final[Engine] = create_engine(
-        '{sqltype}+{driver}://{user}:{password}@{host}:{port}/{database}'.format(
+        '{drivername}://{username}:{password}@{host}:{port}/{database}'.format(
             **db_credentials
         )
     )

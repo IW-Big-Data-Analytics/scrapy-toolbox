@@ -60,9 +60,6 @@ class DatabasePipeline():
         crawler.database_engine = pipeline.engine
         return pipeline
 
-    # def create_session(self, engine):
-    #     session = sessionmaker(bind=engine, autoflush=False)() # autoflush=False: "This is useful when initializing a series of objects which involve existing database queries, where the uncompleted object should not yet be flushed." for instance when using the Association Object Pattern
-    #     return session
 
     def spider_closed(self, spider):
         if self.item_counter > 0:
@@ -118,37 +115,3 @@ class DatabasePipeline():
 
             if return_values:
                 return session.query(model_item.__table__).filter_by(**col_name_value_mapping).first()
-            
-
-
-
-
-
-        # with Session(bind=self.engine) as session:
-        #         model_item = self.mapper.get_model(item)
-        #         existing_model_items: Final[set] = self.existing_model_items[model_item.__table__]
-        #         #check if exists in existin
-        #         item_already_queried: Final[bool] = model_item in existing_model_items
-
-        #         if not item_already_queried:
-                    # existing_model_item = select(model_item.__table__)
-
-                    #  if not query
-                        # add to existing
-                        # add to session
-                            # add to existing
-                    
-                #commit added items
-
-    def get_foreign_key_values(self, model_item) -> dict:
-        #find foreign key classes
-        #check if values for foreign keys exist
-            # return value of column
-        #if not, add item
-        #return value of foreign key column
-        with Session(bind=self.engine) as session:
-            for foreign_key in model_item.__table__.foreign_keys:
-                fk_table: Final[Table] = foreign_key.column.table
-                fk_col_name: Final[str] = foreign_key.name
-            
-        pass
