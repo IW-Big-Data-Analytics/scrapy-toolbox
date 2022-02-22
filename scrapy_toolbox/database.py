@@ -75,22 +75,22 @@ class DatabasePipeline():
 
         foreign_keys: Final[set[ForeignKey]] = model_item.__table__.foreign_keys
 
-        rel_col_mapping: Final[dict[RelationshipProperty: ForeignKey]] = {}
         for relationship in inspect(model_item.__class__).relationships:
             associated_fks = [fk for fk in foreign_keys if fk.column.table == relationship.target]
+            needed_fk_values_present: Final[bool] = all(model_item.__dict__.get(fk.parent.description) is not None for fk in associated_fks)
             rel_name: Final[str] = relationship.key
             rel_item = model_item.__dict__.get(rel_name)
 
-            if not rel_item:
-                raise AttributeError('Item for relationship missing.')
-            
-            needed_column_values: Final[list[Column]] = [fk.column for fk in associated_fks]
-            rel_model_item = self.persist_item(rel_item, return_values=needed_column_values)
-            setattr(model_item, rel_name, rel_model_item)
+            if not needed_fk_values_present:
+                if not rel_item: 
+                        raise AttributeError('Item for relationship missing while associated foreign keys are not set.')
+                else:
+                    needed_column_values: Final[list[Column]] = [fk.column for fk in associated_fks]
+                    rel_model_item = self.persist_item(rel_item, return_values=needed_column_values)
+                    setattr(model_item, rel_name, rel_model_item)
 
-            for fk in associated_fks:
-                if model_item.__dict__.get(fk.parent.description) is None:
-                    setattr(model_item, fk.parent.description, getattr(rel_model_item, fk.column.name))
+                    for fk in associated_fks:
+                        setattr(model_item, fk.parent.description, getattr(rel_model_item, fk.column.name))
         
         return self.insert_into_db(model_item, return_values=return_values)
         

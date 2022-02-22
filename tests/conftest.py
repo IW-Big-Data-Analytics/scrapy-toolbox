@@ -36,9 +36,9 @@ def db_credentials() -> dict[str, str]:
 @pytest.fixture(scope="session")
 @pytest.mark.usefixtures('db_credentials')
 def connection(db_credentials):
-    """Creates the database based on the given credentials and
-    mapping infos if necessary and establishes a connection to it.
+    """Establishes a connection to the database given in the credentials it.
     Returns the engine.
+
     Args:
         db_credentials (dict[str, str]): DB-credentials -> see fixture.
     Returns:
@@ -49,8 +49,6 @@ def connection(db_credentials):
             **db_credentials
         )
     )
-    if not database_exists(engine.url):
-        create_database(engine.url)
 
     return engine
 
@@ -65,9 +63,9 @@ def seed_database(engine: Engine):
     """
     pass
 
-@pytest.fixture(scope="session")
-@pytest.mark.usefixtures('connection') #add potential content fixtures here
-def setup_database(connection: Engine):
+
+@pytest.fixture(autouse=True)
+def setup_database(connection):
     """Sets up the database and yields the state.
     After the tests are finished, all content from the database is erased.
 
@@ -80,6 +78,9 @@ def setup_database(connection: Engine):
     Yields:
         None: The state of the database.
     """
+    if not database_exists(connection.url):
+        create_database(connection.url)
+
     models.Base.metadata.bind = connection
     models.Base.metadata.create_all()
     
