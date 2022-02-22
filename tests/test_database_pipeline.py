@@ -10,7 +10,6 @@ from typing import Final
 from types import ModuleType
 
 class TestDatabasePipeline():
-
     @pytest.mark.usefixtures('setup_database', 'connection', 'db_credentials')
     def test_insert_item(setup_database, connection, db_credentials):
         name: Final[NameItem] = NameItem(name='Bjarne')
@@ -150,27 +149,3 @@ class TestDatabasePipeline():
             assert stored_person_1.name_id == 1
             assert stored_person_1.hometown.id == 1
             assert stored_person_1.hometown_id == 1
-
-
-    @pytest.mark.usefixtures('setup_database', 'connection', 'db_credentials')
-    def test_get_foreign_key_from_children(setup_database, connection, db_credentials):
-        name: Final[NameItem] = NameItem(name='Bjarne')
-        hometown: Final[HometownItem] = HometownItem(name='Weyhe', population=15000.0)
-        person_1: Final[PersonItem] = PersonItem(
-            weight=80.5,
-            height=185.0,
-            shirt_color='red',
-            name=name,
-            hometown=hometown
-        )
-
-        settings: Final[dict] = {
-            'DATABASE_DEV': db_credentials
-        }
-
-        person_items: Final[ModuleType] = importlib.import_module('tests.test_resources.items.person_items')
-        person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
-
-        db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
-
-        db_pipe.get_foreign_key_values(person_1)
