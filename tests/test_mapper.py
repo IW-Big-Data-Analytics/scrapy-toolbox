@@ -1,21 +1,17 @@
+import importlib
 from scrapy_toolbox.mapper import ItemsModelMapper
-from tests.test_resources.items import person_items, person_items_missing_hometown
-from tests.test_resources.models import person_model
-from tests.test_resources.models.person_model import Person, Name, Hometown
-from scrapy_toolbox.exceptions import NoItemForModelException
+from scrapy_toolbox.exceptions import NoModelForItemException
 import pytest
 from typing import Final
 
 
 @pytest.fixture
-def get_person_items():
-    return person_items
-
+def person_items():
+    return importlib.import_module('tests.test_resources.items.person_items')
 
 @pytest.fixture
-def get_person_model():
-    return person_model
-
+def person_model():
+    return importlib.import_module('tests.test_resources.models.person_model')
 
 @pytest.fixture
 def get_person_items_missing_hometown():
@@ -30,9 +26,9 @@ class TestItemsModelMapperInit:
             items=person_items,
             model=person_model
         )
-        assert mapper.model_col.get('NameItem') == Name
-        assert mapper.model_col.get('HometownItem') == Hometown
-        assert mapper.model_col.get('PersonItem') == Person
+        assert mapper.model_col.get('NameItem') == person_model.Name
+        assert mapper.model_col.get('HometownItem') == person_model.Hometown
+        assert mapper.model_col.get('PersonItem') == person_model.Person
 
     def test_only_model_classes_mapped(self):
         '''Tests that in the mapping dictionary only the classes
@@ -44,9 +40,9 @@ class TestItemsModelMapperInit:
         )
 
         assert len(mapper.model_col) == 3
-        assert mapper.model_col.get('NameItem') == Name
-        assert mapper.model_col.get('HometownItem') == Hometown
-        assert mapper.model_col.get('PersonItem') == Person
+        assert mapper.model_col.get('NameItem') == person_model.Name
+        assert mapper.model_col.get('HometownItem') == person_model.Hometown
+        assert mapper.model_col.get('PersonItem') == person_model.Person
 
     def test_missing_item_for_model(self):
         """Checking if a KeyMappingException is thrown when there is 
@@ -59,6 +55,6 @@ class TestItemsModelMapperInit:
         """
         with pytest.raises(NoItemForModelException):
             mapper: Final[ItemsModelMapper] = ItemsModelMapper(
-                items=person_items_missing_hometown,
+                items=None,
                 model=person_model
             )

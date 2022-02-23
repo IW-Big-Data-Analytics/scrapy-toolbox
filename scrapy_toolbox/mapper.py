@@ -8,7 +8,6 @@ from exceptions import NoItemForModelException, KeyMappingException, MissingPrim
 
 
 class ItemsModelMapper:
-
     def __init__(self, items, model):
         """
         Classes in module "model" have to extend DeclarativeMeta.
@@ -53,16 +52,6 @@ class ItemsModelMapper:
         :return: corresponding model object.
         """
         model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
-        model_relationships = {r.key for r in inspect(model_class).relationships}
-        relationship_error, diff_relationship = self._check_relationships_are_items_or_none(model_relationships, item)
-        key_error, diff_key = self._check_primary_keys_not_null(item, model_class)
-        if relationship_error:
-            raise NoRelationshipException(diff_relationship)
-        if key_error:
-            raise MissingPrimaryKeyValueException(diff_key)
-        for key in item:
-            if isinstance(item[key], Item):
-                item[key] = self.map_to_model(item[key])
         model_object: model_class = model_class(**{i: item[i] for i in item})
         return model_object
 

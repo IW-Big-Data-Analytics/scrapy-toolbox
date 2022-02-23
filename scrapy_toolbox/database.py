@@ -1,17 +1,21 @@
-from scrapy import signals
-from sqlalchemy import create_engine
-from sqlalchemy.engine.url import URL
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm.decl_api import DeclarativeMeta
-from sqlalchemy_utils import database_exists, create_database
-from sqlalchemy.inspection import inspect  # Get PKs from model-class
-from sqlalchemy.orm import object_mapper
-from .mapper import ItemsModelMapper
 import os
+ 
+from scrapy import signals
+from sqlalchemy.inspection import inspect
+from .mapper import ItemsModelMapper
+from typing import Final, Type
+
+from sqlalchemy import Table, create_engine, ForeignKey, Column, select
+from sqlalchemy.orm import Session
+from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import URL
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy.orm.relationships import RelationshipProperty
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 
 DeclarativeBase = declarative_base()
-
 
 # https://www.python.org/download/releases/2.2/descrintro/#__new__
 class Singleton(object):
@@ -27,81 +31,86 @@ class Singleton(object):
         pass
 
 
-class DatabasePipeline(Singleton):
-    def __init__(self, settings, items=None, model=None, database=None, database_dev=None):
-        if database:
-            self.database = database
-        elif settings:
-            self.database = settings.get("DATABASE")
-            self.database["query"]["charset"] = 'utf8mb4'
-        if database_dev:
-            self.database_dev = database_dev
-        elif settings:
-            self.database_dev = settings.get("DATABASE_DEV")
-            self.database_dev["query"]["charset"] = 'utf8mb4'
-        self.session = self.get_session()
+class DatabasePipeline():
+    def __init__(self, settings, items=None, model=None):
+        database_credentials = settings.get('DATABASE') if'PRODUCTION' in os.environ else settings.get('DATABASE_DEV')
+
+        if database_credentials:
+            self.engine: Final[Engine] = create_engine(URL(**database_credentials))
+            if self.engine.name != 'mysql' and self.engine.name != 'postgresql':
+                raise AttributeError('Only MySQL and PostgreSQL are supported as SQL-types.')
+        else:
+            raise AttributeError('Could not find database credentials in settings.')
+
+        if not database_exists(self.engine.url):
+            create_database(self.engine.url)
+        DeclarativeBase.metadata.create_all(self.engine, checkfirst=True)
+
         if items and model:
-            self.mapper = ItemsModelMapper(items=items, model=model)
+           self.mapper = ItemsModelMapper(items=items, model=model)
+
+        self.existing_model_items: Final[dict[Type, set]] = {}
+        self.item_counter: int = 0
+
 
     @classmethod
     def from_crawler(cls, crawler):
         pipeline = cls(crawler.settings)
         crawler.signals.connect(pipeline.spider_closed, signals.spider_closed)
-        crawler.database_session = pipeline.session
+        crawler.database_engine = pipeline.engine
         return pipeline
 
-    def get_session(self):
-        engine = self.create_engine()
-        self.create_tables(engine)
-        return self.create_session(engine)
-
-    def create_engine(self):
-        if "PRODUCTION" in os.environ:
-            engine = create_engine(URL.create(**self.database))
-        else:
-            engine = create_engine(URL.create(**self.database_dev))
-        if not database_exists(engine.url):
-            create_database(engine.url)
-        return engine
-
-    def create_tables(self, engine):
-        DeclarativeBase.metadata.create_all(engine, checkfirst=True)
-
-    def create_session(self, engine):
-        # autoflush=False:
-        # "This is useful when initializing a series of objects which involve existing database queries,
-        # where the uncompleted object should not yet be flushed." for instance when using the Association
-        # Object Pattern
-        session = sessionmaker(bind=engine,autoflush=False)()
-        return session
-
     def spider_closed(self, spider):
-        self.session.close()
+        if self.item_counter > 0:
+            self.insert_into_db(self.items)
+
 
     def process_item(self, item, spider):
-        obj: DeclarativeMeta = self.mapper.map_to_model(item=item)
-        model_class = obj.__class__
-        primary_keys = [key.name for key in inspect(model_class).primary_key]
-        if not set(primary_keys).issubset(set(list(item.keys()))):
-            item = model_class(**{i: item[i] for i in item})
-            return item
-        filter_param = {item_id: item[item_id] for item_id in primary_keys}
-        item_by_id = self.session.query(model_class).filter_by(**filter_param).first()
-        if item_by_id is None:
-            obj = model_class(**{i: item[i] for i in item})
-        else:
-            obj = item_by_id
-        try:
-            self.session.add(obj)
-            self.session.commit()
+        self.persist_item(item)
+    
 
-            # Set potentially missing primary keys (autoincrement) for the item
-            mapper = object_mapper(obj)
-            for key, value in zip(mapper.primary_key, mapper.primary_key_from_instance(obj)):
-                item[key.name] = value
-        except:
-            self.session.rollback()
-            raise
-        finally:
-            self.session.close()
-        return item
+    def persist_item(self, item, return_values: list[Column] = None):
+        model_item = self.mapper.map_to_model(item)
+
+        foreign_keys: Final[set[ForeignKey]] = model_item.__table__.foreign_keys
+
+        for relationship in inspect(model_item.__class__).relationships:
+            associated_fks = [fk for fk in foreign_keys if fk.column.table == relationship.target]
+            needed_fk_values_present: Final[bool] = all(model_item.__dict__.get(fk.parent.description) is not None for fk in associated_fks)
+            rel_name: Final[str] = relationship.key
+            rel_item = model_item.__dict__.get(rel_name)
+
+            if not needed_fk_values_present:
+                if not rel_item: 
+                        raise AttributeError('Item for relationship missing while associated foreign keys are not set.')
+                else:
+                    needed_column_values: Final[list[Column]] = [fk.column for fk in associated_fks]
+                    rel_model_item = self.persist_item(rel_item, return_values=needed_column_values)
+                    setattr(model_item, rel_name, rel_model_item)
+
+                    for fk in associated_fks:
+                        setattr(model_item, fk.parent.description, getattr(rel_model_item, fk.column.name))
+        
+        return self.insert_into_db(model_item, return_values=return_values)
+        
+        
+    def insert_into_db(self, model_item: Type, return_values: list[Column]) -> Type:
+        with Session(bind=self.engine) as session:
+            col_val_mapping: Final[dict[str, Type]] = {}
+            for col in model_item.__table__.columns:
+                value = model_item.__dict__.get(col.key)
+                if value:
+                    col_val_mapping[col] = value
+
+            col_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in col_val_mapping.items()}
+            if self.engine.name == 'mysql':
+                stmt = mysql_insert(model_item.__table__).values(**col_name_value_mapping).prefix_with('IGNORE')
+            
+            if self.engine.name == 'postgresql':
+                stmt = postgres_insert(model_item.__table__).values(**col_name_value_mapping).on_conflict_do_nothing()
+
+            session.execute(stmt)
+            session.commit()
+
+            if return_values:
+                return session.query(model_item.__table__).filter_by(**col_name_value_mapping).first()
