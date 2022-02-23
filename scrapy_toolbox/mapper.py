@@ -3,8 +3,8 @@ import scrapy
 from sqlalchemy.inspection import inspect
 from scrapy import Item
 from sqlalchemy.orm.decl_api import DeclarativeMeta
-from typing import Dict, Tuple
-from exceptions import NoItemForModelException, KeyMappingException, MissingPrimaryKeyValueException, NoRelationshipException
+from .exceptions import *
+from typing import Dict, Type, Tuple
 
 
 class ItemsModelMapper:
@@ -17,8 +17,9 @@ class ItemsModelMapper:
         class Bla(Base):
             ...
 
-        :param items: module items.py from current project with scrapy.Items.
-        :param model: module models.py from current project with SQLAlchemy objects.
+        Args:
+            items: module items.py from current project with scrapy.Items.
+            model: module models.py from current project with SQLAlchemy objects.
         """
         self.items = items
         self.model = model
@@ -36,24 +37,13 @@ class ItemsModelMapper:
         if item_error:
             raise NoItemForModelException(diff)
 
-        for item_name, item_class in self.item_classes:
-            key_error, diff = self._check_keys(
-                model_class=self.model_col[item_name],
-                item_class=item_class
-            )
-            if key_error:
-                raise KeyMappingException(diff=diff, item_name=item_name)
-
-    def map_to_model(self, item: Item):
-        """
-        Get scrapy.Item from DatabasePipeline.process_item function and return the corresponding
-        model from module model. This procedure is done recursive for each item.
-        :param item: The scrapy.Item from DatabasePipeline.process_item.
-        :return: corresponding model object.
-        """
-        model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
-        model_object: model_class = model_class(**{i: item[i] for i in item})
-        return model_object
+        # for item_name, item_class in self.item_classes:
+        #     key_error, diff = self._check_keys(
+        #         model_class=self.model_col[item_name],
+        #         item_class=item_class
+        #     )
+        #     if key_error:
+        #         raise KeyMappingException(diff=diff, item_name=item_name)
 
 
     def _check_relationships_are_items_or_none(self, relationships: set, item: Item) -> Tuple[bool, set]:
@@ -112,7 +102,9 @@ class ItemsModelMapper:
         """
         mapping_error = not mapper_item_names.issubset(item_names)
         difference = mapper_item_names.difference(item_names)
-        return mapping_error, difference
+        diff = {self.model_col[item_name].__name__ for item_name in difference}
+        return mapping_error, diff
+
 
     def _check_keys(self, model_class: DeclarativeMeta, item_class: scrapy.Item) -> Tuple[bool, set]:
         """
@@ -128,3 +120,23 @@ class ItemsModelMapper:
         key_error = not item_fields.issubset(model_columns)
         diff = item_fields.difference(model_fields)
         return key_error, diff
+
+    def map_to_model(self, item: Item, map_children: bool = False) -> Type:
+        """Get scrapy.Item from DatabasePipeline.process_item function and return the corresponding
+        model from module model.
+
+        Args:
+            item (Item): The scrapy.Item from DatabasePipeline.process_item.
+            map_children (bool): If items that are passed as a field value of the actual
+                given item should be mapped aswell. Defaults to False.
+
+        Returns
+            Type: corresponding model object.
+        """
+        if map_children:
+            for key in item:
+                if isinstance(item[key], Item):
+                    item[key] = self.map_to_model(item[key])
+        model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
+        model_object: model_class = model_class(**{i: item[i] for i in item})
+        return model_object

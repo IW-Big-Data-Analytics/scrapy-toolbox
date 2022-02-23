@@ -15,7 +15,7 @@ class NoModelForItemException(MapperException):
     corresponding model object.
     """
     def __str__(self):
-        message = f"No corresponding model objects for items {self.diff_str}. Please create these Items"
+        message = f"No corresponding ORM objects for scrapy.Item(s) {self.diff_str}."
         return message
 
 
@@ -25,7 +25,7 @@ class NoItemForModelException(MapperException):
     corresponding scrapy.Item.
     """
     def __str__(self):
-        message = f"No corresponding item objects for models {self.diff_str}. Please create these items"
+        message = f"No corresponding scrapy.Item for ORM(s) {self.diff_str}."
         return message
 
 

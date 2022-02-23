@@ -1,8 +1,8 @@
 import importlib
 from scrapy_toolbox.mapper import ItemsModelMapper
-from scrapy_toolbox.exceptions import NoModelForItemException
+from scrapy_toolbox.exceptions import NoItemForModelException
 import pytest
-from typing import Final
+from typing import Final, Tuple
 
 
 @pytest.fixture
@@ -14,12 +14,15 @@ def person_model():
     return importlib.import_module('tests.test_resources.models.person_model')
 
 @pytest.fixture
-def get_person_items_missing_hometown():
-    return person_items_missing_hometown
+def person_model_no_hometown():
+    return importlib.import_module('tests.test_resources.models.person_model_missing_hometown')
 
+@pytest.fixture
+def person_items_no_hometown():
+    return importlib.import_module('tests.test_resources.items.person_items_missing_hometown')
 
 class TestItemsModelMapperInit:
-    def test_for_each_model_mapping(self):
+    def test_for_each_model_mapping(self, person_items, person_model):
         """Tests if there is a mapping for each model class.
         """
         mapper: Final[ItemsModelMapper] = ItemsModelMapper(
@@ -30,7 +33,7 @@ class TestItemsModelMapperInit:
         assert mapper.model_col.get('HometownItem') == person_model.Hometown
         assert mapper.model_col.get('PersonItem') == person_model.Person
 
-    def test_only_model_classes_mapped(self):
+    def test_only_model_classes_mapped(self, person_items, person_model):
         '''Tests that in the mapping dictionary only the classes
         specified in the model exist.
         '''
@@ -44,17 +47,22 @@ class TestItemsModelMapperInit:
         assert mapper.model_col.get('HometownItem') == person_model.Hometown
         assert mapper.model_col.get('PersonItem') == person_model.Person
 
-    def test_missing_item_for_model(self):
-        """Checking if a KeyMappingException is thrown when there is 
-        an item missing for a model.
 
-        Args:
-            person_model (ModuleType): Module containing the database model.
-            person_items_missing_hometown (ModuleType): Module containing the items but missing
-                a HometownItem.
+    ## Test Exceptions ##
+    def test_no_item_for_model(self, person_items_no_hometown, person_model):
         """
-        with pytest.raises(NoItemForModelException):
-            mapper: Final[ItemsModelMapper] = ItemsModelMapper(
-                items=None,
+        The ORM Hometown has no corresponding scrapy.Item HometownItem so a
+        NoModelForItemException shoult be raised with text
+        'No corresponding scrapy.Item for ORM(s) Hometown.'
+        """
+        try:
+            ItemsModelMapper(
+                items=person_items_no_hometown,
                 model=person_model
             )
+            pytest.fail("Exception not raised.")
+        except NoItemForModelException as e:
+            expected = 'No corresponding scrapy.Item for ORM(s) Hometown.'
+            assert type(e) == NoItemForModelException
+            assert str(e) == expected
+

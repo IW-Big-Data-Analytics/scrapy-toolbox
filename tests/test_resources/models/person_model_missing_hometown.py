@@ -1,0 +1,29 @@
+from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy import Column
+from sqlalchemy import String, Float, Integer
+from sqlalchemy.sql.schema import ForeignKey
+from sqlalchemy.orm import relationship
+from typing import Final
+
+Base = declarative_base()
+
+class Name(Base):
+    __tablename__: Final[str] = 'names'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), unique=True, nullable=False)
+
+
+class Person(Base):
+    __tablename__: Final[str] = 'persons'
+
+    name_id = Column(Integer, ForeignKey(Name.id), primary_key=True)
+    weight = Column(Float, primary_key=True)
+    height = Column(Float, primary_key=True)
+    shirt_color = Column(String(255), primary_key=True)
+    name = relationship("Name")
+
+    name = relationship(Name) #many to one
+
+
+

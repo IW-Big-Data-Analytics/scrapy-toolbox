@@ -25,7 +25,7 @@ def db_credentials() -> dict[str, str]:
                     port: ""
                 }
     """
-    secrets_path: Final[Path] = Path('.', 'tests','secrets.yaml')
+    secrets_path: Final[Path] = Path('.', 'tests', 'secrets.yaml')
     with open(secrets_path, 'r') as stream:
         try:
             return yaml.safe_load(stream)['test_database_credentials']
