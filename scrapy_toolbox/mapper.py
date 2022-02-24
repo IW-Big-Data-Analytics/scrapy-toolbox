@@ -37,14 +37,13 @@ class ItemsModelMapper:
         if item_error:
             raise NoItemForModelException(diff)
 
-        # for item_name, item_class in self.item_classes:
-        #     key_error, diff = self._check_keys(
-        #         model_class=self.model_col[item_name],
-        #         item_class=item_class
-        #     )
-        #     if key_error:
-        #         raise KeyMappingException(diff=diff, item_name=item_name)
-
+        for item_name, item_class in self.item_classes:
+            key_error, diff = self._check_keys(
+                model_class=self.model_col[item_name],
+                item_class=item_class
+            )
+            if key_error:
+                raise KeyMappingException(diff=diff, item_name=item_name)
 
     def _check_relationships_are_items_or_none(self, relationships: set, item: Item) -> Tuple[bool, set]:
         """
@@ -61,7 +60,6 @@ class ItemsModelMapper:
             else:
                 relationship_error = True
         return relationship_error, relationships_not_null
-
 
     def _check_primary_keys_not_null(self, item: Item, model_class: DeclarativeMeta) -> Tuple[bool, set]:
         """
@@ -105,20 +103,40 @@ class ItemsModelMapper:
         diff = {self.model_col[item_name].__name__ for item_name in difference}
         return mapping_error, diff
 
-
     def _check_keys(self, model_class: DeclarativeMeta, item_class: scrapy.Item) -> Tuple[bool, set]:
         """
         check if for each item the corresponding model has the same keys.
+        Rules:
+            - When a Column in the ORM has a default there can be no Field in scrapy.Item.
+            - When there is a relationship with local columns in the scrapy.Item there need to be a Field for
+              relationship and/or for the local columns (the foreign keys).
         :param model_class: corresponding model class
         :param item_class: item class
         :return: bool if keys are all right, all keys that do not have a match
         """
+        # TODO: Relationships berücksichtigen.
         item_fields = set(item_class.fields.keys())
         model_fields = set(inspect(model_class).columns.keys())
-        model_relationships = set(inspect(model_class).relationships.keys())
-        model_columns = model_fields.union(model_relationships)
-        key_error = not item_fields.issubset(model_columns)
-        diff = item_fields.difference(model_fields)
+        model_relationships = set(inspect(model_class).relationships)
+        keys_with_default = {key.name for key in inspect(model_class).columns
+                             if key.default is not None or key.autoincrement is True}
+        # Ignore Columns/Relationships that are set correctly
+        for relationship in model_relationships:
+            relationship_key = relationship.key
+            relationship_local_columns: set[str] = {col.key for col in relationship.local_columns}
+            if relationship_key in item_fields and not relationship_local_columns.issubset(item_fields):
+                model_fields = model_fields.difference(relationship_local_columns)
+            elif relationship_local_columns.issubset(item_fields) and relationship_key not in item_fields:
+                model_relationships.remove(relationship)
+            else:
+                continue
+        # Ignore keys with default value or that aure autoincrement
+        for key in keys_with_default:
+            if key not in item_fields:
+                model_fields.remove(key)
+        model_columns = model_fields.union({rel.key for rel in model_relationships})
+        key_error = not (item_fields == model_columns)
+        diff = item_fields.symmetric_difference(model_columns)
         return key_error, diff
 
     def map_to_model(self, item: Item, map_children: bool = False) -> Type:

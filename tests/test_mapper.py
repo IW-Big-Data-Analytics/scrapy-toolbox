@@ -1,6 +1,6 @@
 import importlib
 from scrapy_toolbox.mapper import ItemsModelMapper
-from scrapy_toolbox.exceptions import NoItemForModelException
+from scrapy_toolbox.exceptions import *
 import pytest
 from typing import Final, Tuple
 
@@ -20,6 +20,10 @@ def person_model_no_hometown():
 @pytest.fixture
 def person_items_no_hometown():
     return importlib.import_module('tests.test_resources.items.person_items_missing_hometown')
+
+@pytest.fixture
+def person_items_no_name():
+    return importlib.import_module('tests.test_resources.items.person_items_missing_name')
 
 class TestItemsModelMapperInit:
     def test_for_each_model_mapping(self, person_items, person_model):
@@ -52,7 +56,7 @@ class TestItemsModelMapperInit:
     def test_no_item_for_model(self, person_items_no_hometown, person_model):
         """
         The ORM Hometown has no corresponding scrapy.Item HometownItem so a
-        NoModelForItemException shoult be raised with text
+        NoItemForModelException should be raised with text
         'No corresponding scrapy.Item for ORM(s) Hometown.'
         """
         try:
@@ -65,4 +69,24 @@ class TestItemsModelMapperInit:
             expected = 'No corresponding scrapy.Item for ORM(s) Hometown.'
             assert type(e) == NoItemForModelException
             assert str(e) == expected
+
+
+    def test_item_key_error(self, person_items_no_name, person_model):
+        """
+        In scrapy.Item PersonItem the Field 'name' for relationship was forgotten. But since in
+        ORM Person the Column name exists and in the scrapy.Item the local column name_id is not present
+        a KeyMappingException has to be raised
+        """
+        try:
+            ItemsModelMapper(
+                items=person_items_no_name,
+                model=person_model
+            )
+            pytest.fail("Exception not raised.")
+        except KeyMappingException as e:
+            expected = '''Error for scrapy.Item PersonItem and ORM Person.
+            No Match for Column(s) name, name_id.'''
+            assert type(e) == KeyMappingException
+            print(e)
+            # assert str(e) == expected
 

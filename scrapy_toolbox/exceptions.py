@@ -45,8 +45,8 @@ class KeyMappingException(MapperException):
         super().__init__(diff)
 
     def __str__(self):
-        message = f"""Error for item {self.item_name} and model {self.item_name.replace("Item", "")}.
-                      Keys {self.diff_str} have no match in model columns."""
+        message = f"""Error for scrapy.Item {self.item_name} and ORM {self.item_name.replace("Item", "")}.
+                      No Match for Column(s) {self.diff_str}."""
         return message
 
 
