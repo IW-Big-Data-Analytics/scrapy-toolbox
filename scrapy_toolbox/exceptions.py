@@ -4,7 +4,7 @@ class MapperException(Exception):
     Get names of objects that caused the error and put them in string for
     error message in __str__ method.
     """
-    def __init__(self, diff: set):
+    def __init__(self, diff: list):
         self.diff_str = ", ".join(diff)
         super().__init__()
 
@@ -55,7 +55,7 @@ class MissingPrimaryKeyValueException(MapperException):
     Raises if a model objects is created which has some primary_keys missing that do not have a default value.
     """
     def __str__(self):
-        message = f"Primary keys {self.diff_str} are None but do not have default values."
+        message = f"Primarykey(s) or corresponding Relationship(s) {self.diff_str} are None but do not have default values."
         return message
 
 

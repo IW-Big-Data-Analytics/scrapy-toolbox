@@ -61,7 +61,7 @@ class ItemsModelMapper:
                 relationship_error = True
         return relationship_error, relationships_not_null
 
-    def _check_primary_keys_not_null(self, item: Item, model_class: DeclarativeMeta) -> Tuple[bool, set]:
+    def _check_primary_keys_not_null(self, item: Item, model_class: DeclarativeMeta) -> Tuple[bool, list]:
         """
         Check if all primary keys without default value or auto_increment have values.
         :param item: scrapy.Item that is processed
@@ -69,29 +69,31 @@ class ItemsModelMapper:
         :return: True if there is a pk that is null, set with pks that are null.
         """
         relationships = {rel for rel in inspect(model_class).relationships}
-        primary_keys = {key.name for key in inspect(model_class).primary_key
-                        if key.default is None and key.autoincrement is not True}
+        primary_keys_no_default = {key.name for key in inspect(model_class).primary_key
+                                   if key.default is None and key.autoincrement is not True}
+        # Fields in the scrapy.Item that are not set.
         arguments_none = set(item.fields.keys()).difference(set(item.keys()))
+        diff = set()
+        primary_key_error = False
         for relationship in relationships:
             relationship_key = relationship.key
             # Get corresponding columns for the relationship that are PKs.
             locale_columns_pk = {col.name for col in relationship.local_columns
                                  if col.primary_key is True}
             # If the relationship column has a value remove all corresponding pks
-            # from set with arguments from item that are none.
+            # from set with arguments from item that are none since they are set automatically by SQLAlchemy.
             if relationship_key not in arguments_none:
-                primary_keys = primary_keys.difference(locale_columns_pk)
+                primary_keys_no_default = primary_keys_no_default.difference(locale_columns_pk)
                 arguments_none = arguments_none.difference(locale_columns_pk)
             else:
+                # if relationship is not set the local columns need to be set.
                 primary_key_error = not locale_columns_pk.issubset(arguments_none)
-                diff = {relationship_key}
-                if primary_key_error:
-                    return True, diff
-        primary_key_error = not primary_keys.issubset(arguments_none)
-        diff = primary_keys.intersection(arguments_none)
-        return primary_key_error, diff
+                diff.add(relationship_key)
+        primary_key_error = primary_key_error or not primary_keys_no_default.issubset(arguments_none)
+        diff = diff.union(primary_keys_no_default.intersection(arguments_none))
+        return primary_key_error, sorted(diff)
 
-    def _check_item_mapping(self, item_names: set, mapper_item_names: set) -> Tuple[bool, set]:
+    def _check_item_mapping(self, item_names: set, mapper_item_names: set) -> Tuple[bool, list]:
         """
         Check if for each model class there exists a corresponding item.
         :param item_names: Names from the Item classes for current project
@@ -101,9 +103,9 @@ class ItemsModelMapper:
         mapping_error = not mapper_item_names.issubset(item_names)
         difference = mapper_item_names.difference(item_names)
         diff = {self.model_col[item_name].__name__ for item_name in difference}
-        return mapping_error, diff
+        return mapping_error, sorted(diff)
 
-    def _check_keys(self, model_class: DeclarativeMeta, item_class: scrapy.Item) -> Tuple[bool, set]:
+    def _check_keys(self, model_class: DeclarativeMeta, item_class: scrapy.Item) -> Tuple[bool, list]:
         """
         check if for each item the corresponding model has the same keys.
         Rules:
@@ -114,7 +116,6 @@ class ItemsModelMapper:
         :param item_class: item class
         :return: bool if keys are all right, all keys that do not have a match
         """
-        # TODO: Relationships berücksichtigen.
         item_fields = set(item_class.fields.keys())
         model_fields = set(inspect(model_class).columns.keys())
         model_relationships = set(inspect(model_class).relationships)
@@ -137,7 +138,7 @@ class ItemsModelMapper:
         model_columns = model_fields.union({rel.key for rel in model_relationships})
         key_error = not (item_fields == model_columns)
         diff = item_fields.symmetric_difference(model_columns)
-        return key_error, diff
+        return key_error, sorted(diff)
 
     def map_to_model(self, item: Item, map_children: bool = False) -> Type:
         """Get scrapy.Item from DatabasePipeline.process_item function and return the corresponding
@@ -156,5 +157,8 @@ class ItemsModelMapper:
                 if isinstance(item[key], Item):
                     item[key] = self.map_to_model(item[key])
         model_class: DeclarativeMeta = self.model_col[item.__class__.__name__]  # get model for item name
+        primary_key_error, diff = self._check_primary_keys_not_null(item=item, model_class=model_class)
+        if primary_key_error:
+            raise MissingPrimaryKeyValueException(diff=diff)
         model_object: model_class = model_class(**{i: item[i] for i in item})
         return model_object

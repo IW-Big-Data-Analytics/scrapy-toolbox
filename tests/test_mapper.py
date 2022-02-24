@@ -89,3 +89,27 @@ class TestItemsModelMapperInit:
             assert type(e) == KeyMappingException
             assert str(e) == expected
 
+    def test_primary_key_not_null(self, person_items, person_model):
+        """
+        An exception needs to be raised when a primary key is not set while it does not have a default.
+        """
+        mapper: Final[ItemsModelMapper] = ItemsModelMapper(
+            items=person_items,
+            model=person_model
+        )
+        # id in Hometown is autoincrement => no exception.
+        # Field weight is primary_key without default and since name_id and hometown_id are pk the Fields for
+        # relationships name and hometown can not be Null.
+        # => MissingPrimaryKeyValueException
+        item_without_pk = person_items.PersonItem(
+            height=1.8,
+            shirt_color="red",
+            # hometown=hometown
+        )
+        try:
+            mapper.map_to_model(item=item_without_pk)
+            pytest.fail("Exception was not raised.")
+        except MissingPrimaryKeyValueException as e:
+            expected = "Primarykey(s) or corresponding Relationship(s) hometown, name, weight are None but do not have default values."
+            assert type(e) == MissingPrimaryKeyValueException
+            assert str(e) == expected
