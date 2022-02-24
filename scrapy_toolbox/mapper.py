@@ -121,6 +121,7 @@ class ItemsModelMapper:
         item_fields = set(item_class.fields.keys())
         model_fields = set(inspect(model_class).columns.keys())
         model_relationships = set(inspect(model_class).relationships)
+        model_relationships_copy = model_relationships.copy()
         keys_with_default = {key.name for key in inspect(model_class).columns
                              if key.default is not None or key.autoincrement is True}
         # Ignore Columns/Relationships that are set correctly
@@ -130,14 +131,14 @@ class ItemsModelMapper:
             if relationship_key in item_fields and not relationship_local_columns.issubset(item_fields):
                 model_fields = model_fields.difference(relationship_local_columns)
             elif relationship_local_columns.issubset(item_fields) and relationship_key not in item_fields:
-                model_relationships.remove(relationship)
+                model_relationships_copy.remove(relationship)
             else:
                 continue
         # Ignore keys with default value or that aure autoincrement
         for key in keys_with_default:
             if key not in item_fields:
                 model_fields.remove(key)
-        model_columns = model_fields.union({rel.key for rel in model_relationships})
+        model_columns = model_fields.union({rel.key for rel in model_relationships_copy})
         key_error = not (item_fields == model_columns)
         diff = item_fields.symmetric_difference(model_columns)
         return key_error, sorted(diff)

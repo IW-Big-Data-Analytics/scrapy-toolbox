@@ -47,7 +47,7 @@ class ErrorSaving():
             "response_body": response.body if response else ""
         })
 
-        with Session(spider.database_engine) as session:
+        with Session(spider.crawler.database_engine) as session:
             try:
                 session.add(e)
                 session.commit()

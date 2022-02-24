@@ -32,7 +32,7 @@ class Singleton(object):
         pass
 
 
-class DatabasePipeline():
+class DatabasePipeline(Singleton):
     def __init__(self, settings, items=None, model=None):
         if 'PRODUCTION' in os.environ:
             database_credentials = settings.get('DATABASE')
