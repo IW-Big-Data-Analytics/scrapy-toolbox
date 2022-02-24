@@ -84,9 +84,8 @@ class TestItemsModelMapperInit:
             )
             pytest.fail("Exception not raised.")
         except KeyMappingException as e:
-            expected = '''Error for scrapy.Item PersonItem and ORM Person.
-            No Match for Column(s) name, name_id.'''
+            expected = f"""Error for scrapy.Item PersonItem and ORM Person.
+                      No Match for Column(s) name, name_id."""
             assert type(e) == KeyMappingException
-            print(e)
-            # assert str(e) == expected
+            assert str(e) == expected
 
