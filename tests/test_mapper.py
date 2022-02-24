@@ -104,7 +104,6 @@ class TestItemsModelMapperInit:
         item_without_pk = person_items.PersonItem(
             height=1.8,
             shirt_color="red",
-            # hometown=hometown
         )
         try:
             mapper.map_to_model(item=item_without_pk)
@@ -112,4 +111,28 @@ class TestItemsModelMapperInit:
         except MissingPrimaryKeyValueException as e:
             expected = "Primarykey(s) or corresponding Relationship(s) hometown, name, weight are None but do not have default values."
             assert type(e) == MissingPrimaryKeyValueException
+            assert str(e) == expected
+
+
+    def test_relationship_none_or_item(self, person_items, person_model):
+        """
+
+        """
+        mapper: Final[ItemsModelMapper] = ItemsModelMapper(
+            items=person_items,
+            model=person_model
+        )
+        # Since name and hometown are relationships here they have to be either None or scrapy.Item.
+        item = person_items.PersonItem(
+            height=1.8,
+            shirt_color="red",
+            weight=70,
+            name="Otto",
+            hometown="Köln"
+        )
+        try:
+            mapper.map_to_model(item)
+        except RelationshipItemOrNoneException as e:
+            expected = "For Relationship(s) hometown, name the values in scrapy.Item need to be scrapy.Item or None."
+            assert type(e) == RelationshipItemOrNoneException
             assert str(e) == expected

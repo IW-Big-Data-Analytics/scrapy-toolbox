@@ -59,7 +59,7 @@ class MissingPrimaryKeyValueException(MapperException):
         return message
 
 
-class NoRelationshipException(MapperException):
+class RelationshipItemOrNoneException(MapperException):
     """
     Raises if a scrapy.Item contains another scrapy.Item but in the model there is no relationship defined
     for those Items.
@@ -75,6 +75,5 @@ class NoRelationshipException(MapperException):
         Only then the Items AccountItem(person = PersonItem(...)) successfully passes the pipeline.
     """
     def __str__(self):
-        message = f"If model object has relationship the corresponding column has to contain a scrapy.Item or None." \
-                  f"Was not the case for {self.diff_str}."
+        message = f"For Relationship(s) {self.diff_str} the values in scrapy.Item need to be scrapy.Item or None."
         return message
