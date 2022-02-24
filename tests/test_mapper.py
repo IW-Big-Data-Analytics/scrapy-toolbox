@@ -116,7 +116,8 @@ class TestItemsModelMapperInit:
 
     def test_relationship_none_or_item(self, person_items, person_model):
         """
-
+        In the Item the Fields that correspond to the relationships are not scrapy.Items so a
+        RelationshipItemOrNoneException is raised.
         """
         mapper: Final[ItemsModelMapper] = ItemsModelMapper(
             items=person_items,
