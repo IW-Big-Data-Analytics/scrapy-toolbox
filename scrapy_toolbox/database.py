@@ -75,7 +75,8 @@ class DatabasePipeline(Singleton):
 
 
     def process_item(self, item, spider):
-        return self.persist_item(item, return_item=True)
+        self.persist_item(item)
+        return item
     
 
     def persist_item(self, item, return_item: bool = False):
@@ -124,7 +125,7 @@ class DatabasePipeline(Singleton):
         return self.insert_into_db(model_item, return_item)
         
         
-    def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type|None:
+    def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type:#|None:
         """Opens a connection to the database and tries to insert the given model item into the database.
 
         NOTE THAT CONFLICTS WILL BE IGNORED AND ALL COLUMN VALUES NEED TO BE PRESENT
