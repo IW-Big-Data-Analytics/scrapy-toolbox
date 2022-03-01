@@ -1,3 +1,4 @@
+import datetime
 import os
  
 from scrapy import signals
@@ -53,7 +54,9 @@ class DatabasePipeline(Singleton):
         DeclarativeBase.metadata.create_all(self.engine, checkfirst=True)
 
         if items and model:
-           self.mapper = ItemsModelMapper(items=items, model=model)
+            self.items = items
+            self.model = model
+            self.mapper = ItemsModelMapper(items=items, model=model)
 
         self.existing_model_items: Final[dict[Type, set]] = {}
         self.item_counter: int = 0
@@ -72,7 +75,7 @@ class DatabasePipeline(Singleton):
 
 
     def process_item(self, item, spider):
-        self.persist_item(item)
+        return self.persist_item(item, return_item=True)
     
 
     def persist_item(self, item, return_item: bool = False):
@@ -143,11 +146,14 @@ class DatabasePipeline(Singleton):
                 after it should have been inserted.
         """
         with Session(bind=self.engine) as session:
-            col_val_mapping: Final[dict[str, Type]] = {}
+            col_val_mapping: Final[dict[str, Type]] = dict()
             for col in model_item.__table__.columns:
                 value = model_item.__dict__.get(col.key)
                 if value:
-                    col_val_mapping[col] = value
+                    if isinstance(value, datetime.datetime):
+                        col_val_mapping[col] = value.replace(microsecond=0)
+                    else:
+                        col_val_mapping[col] = value
 
             col_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in col_val_mapping.items()}
             if self.engine.name == 'mysql':

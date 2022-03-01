@@ -3,6 +3,7 @@ from scrapy import Field
 
 class NameItem(scrapy.Item):
     name = Field()
+    saved_at = Field()
 
 
 class HometownItem(scrapy.Item):

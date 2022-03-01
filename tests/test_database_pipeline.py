@@ -1,12 +1,14 @@
 import pytest
 import importlib
 import time
+import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from scrapy_toolbox.database import DatabasePipeline
 from tests.test_resources.models.person_model import Person, Name, Hometown
 from tests.test_resources.items.person_items import HometownItem, NameItem, PersonItem
 from tests.test_resources.items.person_items_with_fk_fields import PersonItem as PersonItemWithFkFields
+from sqlalchemy.orm.exc import NoResultFound
 
 from typing import Final
 from types import ModuleType
@@ -49,6 +51,45 @@ def test_insert_item(connection, db_credentials):
         assert stored_person.hometown_id == 1
         assert stored_person.hometown.name == 'Weyhe'
         assert stored_person.hometown.population == 15000.0
+
+def test_datetime(connection, db_credentials):
+    name: Final[NameItem] = Name(
+        name='Bjarne',
+        saved_at=datetime.datetime.now()
+    )
+
+    settings: Final[dict] = {
+        'DATABASE_DEV': db_credentials
+    }
+
+    person_items: Final[ModuleType] = importlib.import_module('tests.test_resources.items.person_items')
+    person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
+
+    db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
+    try:
+        db_pipe.insert_into_db(name)
+    except NoResultFound as e:
+        pytest.fail("Exception raised.")
+
+def test_items_insert(connection, db_credentials):
+    name_item = NameItem(name="Otto")
+    hometown_item = HometownItem(name="Berlin", population=2_000_000)
+    person_item = PersonItem(
+        name=name_item,
+        hometown=hometown_item,
+        height=1.9,
+        weight=80,
+        shirt_color="black"
+    )
+
+    settings: Final[dict] = {
+        'DATABASE_DEV': db_credentials
+    }
+    person_items: Final[ModuleType] = importlib.import_module('tests.test_resources.items.person_items')
+    person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
+    db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
+
+    db_pipe.process_item(person_item, None)
 
 
 def test_several_inserts(connection, db_credentials):

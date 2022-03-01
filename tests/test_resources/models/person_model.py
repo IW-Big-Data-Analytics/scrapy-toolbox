@@ -1,6 +1,6 @@
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy import Column
-from sqlalchemy import String, Float, Integer
+from sqlalchemy import String, Float, Integer, DateTime
 from sqlalchemy.sql.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from typing import Final
@@ -12,7 +12,7 @@ class Name(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), unique=True, nullable=False)
-
+    saved_at = Column(DateTime)
 
 class Hometown(Base):
     __tablename__: Final[str] = 'hometowns'

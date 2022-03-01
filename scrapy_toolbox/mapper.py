@@ -137,7 +137,7 @@ class ItemsModelMapper:
         # Ignore keys with default value or that aure autoincrement
         for key in keys_with_default:
             if key not in item_fields:
-                model_fields.remove(key)
+                model_fields = model_fields.difference({key})
         model_columns = model_fields.union({rel.key for rel in model_relationships_copy})
         key_error = not (item_fields == model_columns)
         diff = item_fields.symmetric_difference(model_columns)
