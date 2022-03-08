@@ -123,7 +123,7 @@ class DatabasePipeline(Singleton):
         return self.insert_into_db(model_item, return_item)
         
         
-    def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type|None:
+    def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type:#|None:
         """Opens a connection to the database and tries to insert the given model item into the database.
 
         NOTE THAT CONFLICTS WILL BE IGNORED AND ALL COLUMN VALUES NEED TO BE PRESENT

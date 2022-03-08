@@ -71,26 +71,6 @@ def test_datetime(connection, db_credentials):
     except NoResultFound as e:
         pytest.fail("Exception raised.")
 
-def test_items_insert(connection, db_credentials):
-    name_item = NameItem(name="Otto")
-    hometown_item = HometownItem(name="Berlin", population=2_000_000)
-    person_item = PersonItem(
-        name=name_item,
-        hometown=hometown_item,
-        height=1.9,
-        weight=80,
-        shirt_color="black"
-    )
-
-    settings: Final[dict] = {
-        'DATABASE_DEV': db_credentials
-    }
-    person_items: Final[ModuleType] = importlib.import_module('tests.test_resources.items.person_items')
-    person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
-    db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
-
-    db_pipe.process_item(person_item, None)
-
 
 def test_several_inserts(connection, db_credentials):
     name_1: Final[NameItem] = NameItem(name='Bjarne')
