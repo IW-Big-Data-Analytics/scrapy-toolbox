@@ -121,7 +121,6 @@ class DatabasePipeline(Singleton):
 
                     for fk in associated_fks:
                         setattr(model_item, fk.parent.description, getattr(rel_model_item, fk.column.name))
-        
         return self.insert_into_db(model_item, return_item)
         
         
@@ -167,8 +166,8 @@ class DatabasePipeline(Singleton):
             session.commit()
 
             if return_item or self.debug_mode:
-                model_item = session.query(model_item.__table__).filter_by(**col_name_value_mapping).first()
-                if not model_item:
-                    raise NoResultFound(f'No item with values: "{col_name_value_mapping}" persisted.')
+                # model_item = session.query(model_item.__table__).filter_by(**col_name_value_mapping).first()
+                # if not model_item:
+                #     raise NoResultFound(f'No item with values: "{col_name_value_mapping}" persisted.')
                 return model_item
             
