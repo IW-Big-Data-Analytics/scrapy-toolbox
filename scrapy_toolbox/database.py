@@ -104,7 +104,6 @@ class DatabasePipeline(Singleton):
         model_item = self.mapper.map_to_model(item)
         model_attr: Final[dict] = model_item.__dict__
         foreign_keys: Final[set[ForeignKey]] = model_item.__table__.foreign_keys
-
         for relationship in inspect(model_item.__class__).relationships: #checking for nested items/relationships
             rel_name: Final[str] = relationship.key
             rel_item = model_attr.get(rel_name)
@@ -124,7 +123,7 @@ class DatabasePipeline(Singleton):
         return self.insert_into_db(model_item, return_item)
         
         
-    def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type:#|None:
+    def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type|None:
         """Opens a connection to the database and tries to insert the given model item into the database.
 
         NOTE THAT CONFLICTS WILL BE IGNORED AND ALL COLUMN VALUES NEED TO BE PRESENT
@@ -145,8 +144,10 @@ class DatabasePipeline(Singleton):
             NoResultFound: If no result for the given item was found in the database
                 after it should have been inserted.
         """
+
         with Session(bind=self.engine) as session:
             col_val_mapping: Final[dict[str, Type]] = dict()
+            unique: dict = dict()
             for col in model_item.__table__.columns:
                 value = model_item.__dict__.get(col.key)
                 if value:
@@ -154,20 +155,21 @@ class DatabasePipeline(Singleton):
                         col_val_mapping[col] = value.replace(microsecond=0)
                     else:
                         col_val_mapping[col] = value
+                    if col.primary_key or col.unique is not None:
+                        unique[col] = col_val_mapping[col]
 
-            col_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in col_val_mapping.items()}
-            if self.engine.name == 'mysql':
-                stmt = mysql_insert(model_item.__table__).values(**col_name_value_mapping).prefix_with('IGNORE')
-            
-            if self.engine.name == 'postgresql':
-                stmt = postgres_insert(model_item.__table__).values(**col_name_value_mapping).on_conflict_do_nothing()
+        col_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in col_val_mapping.items()}
+        unique_value_mapping = {col.key: value for col, value in unique.items()}
+        if self.engine.name == 'mysql':
+            stmt = mysql_insert(model_item.__table__).values(**col_name_value_mapping).prefix_with('IGNORE')
 
-            session.execute(stmt)
-            session.commit()
-
-            if return_item or self.debug_mode:
-                # model_item = session.query(model_item.__table__).filter_by(**col_name_value_mapping).first()
-                # if not model_item:
-                #     raise NoResultFound(f'No item with values: "{col_name_value_mapping}" persisted.')
-                return model_item
+        if self.engine.name == 'postgresql':
+            stmt = postgres_insert(model_item.__table__).values(**col_name_value_mapping).on_conflict_do_nothing()
+        session.execute(stmt)
+        session.commit()
+        if return_item or self.debug_mode:
+            model_item = session.query(model_item.__table__).filter_by(**unique_value_mapping).first()
+            if not model_item:
+                raise NoResultFound(f'No item with values: "{unique_value_mapping}" persisted.')
+            return model_item
             
