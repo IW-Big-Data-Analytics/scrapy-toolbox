@@ -1,6 +1,6 @@
 import datetime
 import os
- 
+
 from scrapy import signals
 from sqlalchemy.inspection import inspect
 from .mapper import ItemsModelMapper
@@ -77,7 +77,7 @@ class DatabasePipeline(Singleton):
     def process_item(self, item, spider):
         self.persist_item(item)
         return item
-    
+
 
     def persist_item(self, item, return_item: bool = False):
         """Controls the persistence of the given item in the database.
@@ -113,18 +113,18 @@ class DatabasePipeline(Singleton):
             needed_fk_values_present: Final[bool] = all(model_attr.get(fk.parent.description) is not None for fk in associated_fks)
 
             if not needed_fk_values_present: #if not all fk values are set
-                if not rel_item: 
-                        raise AttributeError('Item for relationship missing while associated foreign keys are not set.')
+                if not rel_item:
+                    raise AttributeError('Item for relationship missing while associated foreign keys are not set.')
                 else:
                     rel_model_item = self.persist_item(rel_item, return_item=True)
                     setattr(model_item, rel_name, rel_model_item)
 
                     for fk in associated_fks:
                         setattr(model_item, fk.parent.description, getattr(rel_model_item, fk.column.name))
-        
+
         return self.insert_into_db(model_item, return_item)
-        
-        
+
+
     def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type:#|None:
         """Opens a connection to the database and tries to insert the given model item into the database.
 
@@ -133,7 +133,7 @@ class DatabasePipeline(Singleton):
         Foreign key values have to be set beforehand since all conflict are ignored.
         If a model item should be returned the method tries to query an item with
         the given values. If no item could be queried, which is the case if an item that
-        was not already stored in the database could not be inserted, an 
+        was not already stored in the database could not be inserted, an
 
         Args:
             model_item (Type): Model item that should be inserted.
@@ -163,7 +163,7 @@ class DatabasePipeline(Singleton):
             unique_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in unique_val_mapping.items()}
             if self.engine.name == 'mysql':
                 stmt = mysql_insert(model_item.__table__).values(**col_name_value_mapping).prefix_with('IGNORE')
-            
+
             if self.engine.name == 'postgresql':
                 stmt = postgres_insert(model_item.__table__).values(**col_name_value_mapping).on_conflict_do_nothing()
 

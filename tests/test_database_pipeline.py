@@ -32,7 +32,7 @@ def test_insert_item(connection, db_credentials):
     person_model: Final[ModuleType] = importlib.import_module('tests.test_resources.models.person_model')
 
     db_pipe: Final[DatabasePipeline] = DatabasePipeline(settings, items=person_items, model=person_model)
-    db_pipe.persist_item(person)
+    db_pipe.process_item(person, None)
 
     with Session(bind=connection) as session:
         stored_person = session.execute(
