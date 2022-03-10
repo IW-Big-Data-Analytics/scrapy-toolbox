@@ -148,6 +148,7 @@ class DatabasePipeline(Singleton):
         """
         with Session(bind=self.engine) as session:
             col_val_mapping: Final[dict[str, Type]] = dict()
+            unique_val_mapping: Final[dict[str, Type]] = dict()
             for col in model_item.__table__.columns:
                 value = model_item.__dict__.get(col.key)
                 if value:
@@ -155,8 +156,11 @@ class DatabasePipeline(Singleton):
                         col_val_mapping[col] = value.replace(microsecond=0)
                     else:
                         col_val_mapping[col] = value
+                    if col.primary_key or col.unique is not None:
+                        unique_val_mapping[col] = col_val_mapping[col]
 
             col_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in col_val_mapping.items()}
+            unique_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in unique_val_mapping.items()}
             if self.engine.name == 'mysql':
                 stmt = mysql_insert(model_item.__table__).values(**col_name_value_mapping).prefix_with('IGNORE')
             
@@ -167,8 +171,8 @@ class DatabasePipeline(Singleton):
             session.commit()
 
             if return_item or self.debug_mode:
-                model_item = session.query(model_item.__table__).filter_by(**col_name_value_mapping).first()
+                model_item = session.query(model_item.__table__).filter_by(**unique_name_value_mapping).first()
                 if not model_item:
-                    raise NoResultFound(f'No item with values: "{col_name_value_mapping}" persisted.')
+                    raise NoResultFound(f'No item with unique values: "{unique_name_value_mapping}" persisted.')
                 return model_item
             
