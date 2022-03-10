@@ -1,6 +1,6 @@
 import datetime
 import os
- 
+
 from scrapy import signals
 from sqlalchemy.inspection import inspect
 from .mapper import ItemsModelMapper
@@ -77,7 +77,7 @@ class DatabasePipeline(Singleton):
     def process_item(self, item, spider):
         self.persist_item(item)
         return item
-    
+
 
     def persist_item(self, item, return_item: bool = False):
         """Controls the persistence of the given item in the database.
@@ -90,7 +90,7 @@ class DatabasePipeline(Singleton):
         the item from the given relationship will be not inserted into the database.
 
         Args:
-            item (scrapy.Item): 
+            item (scrapy.Item):
             return_item (bool): If the model item of the item should be returned.
 
         Raises:
@@ -104,6 +104,7 @@ class DatabasePipeline(Singleton):
         model_item = self.mapper.map_to_model(item)
         model_attr: Final[dict] = model_item.__dict__
         foreign_keys: Final[set[ForeignKey]] = model_item.__table__.foreign_keys
+
         for relationship in inspect(model_item.__class__).relationships: #checking for nested items/relationships
             rel_name: Final[str] = relationship.key
             rel_item = model_attr.get(rel_name)
@@ -112,17 +113,18 @@ class DatabasePipeline(Singleton):
             needed_fk_values_present: Final[bool] = all(model_attr.get(fk.parent.description) is not None for fk in associated_fks)
 
             if not needed_fk_values_present: #if not all fk values are set
-                if not rel_item: 
-                        raise AttributeError('Item for relationship missing while associated foreign keys are not set.')
+                if not rel_item:
+                    raise AttributeError('Item for relationship missing while associated foreign keys are not set.')
                 else:
                     rel_model_item = self.persist_item(rel_item, return_item=True)
                     setattr(model_item, rel_name, rel_model_item)
 
                     for fk in associated_fks:
                         setattr(model_item, fk.parent.description, getattr(rel_model_item, fk.column.name))
+
         return self.insert_into_db(model_item, return_item)
-        
-        
+
+
     def insert_into_db(self, model_item: Type, return_item: bool=False) -> Type:#|None:
         """Opens a connection to the database and tries to insert the given model item into the database.
 
@@ -131,7 +133,7 @@ class DatabasePipeline(Singleton):
         Foreign key values have to be set beforehand since all conflict are ignored.
         If a model item should be returned the method tries to query an item with
         the given values. If no item could be queried, which is the case if an item that
-        was not already stored in the database could not be inserted, an 
+        was not already stored in the database could not be inserted, an
 
         Args:
             model_item (Type): Model item that should be inserted.
@@ -144,10 +146,9 @@ class DatabasePipeline(Singleton):
             NoResultFound: If no result for the given item was found in the database
                 after it should have been inserted.
         """
-
         with Session(bind=self.engine) as session:
             col_val_mapping: Final[dict[str, Type]] = dict()
-            unique: dict = dict()
+            unique_val_mapping: Final[dict[str, Type]] = dict()
             for col in model_item.__table__.columns:
                 value = model_item.__dict__.get(col.key)
                 if value:
@@ -156,20 +157,22 @@ class DatabasePipeline(Singleton):
                     else:
                         col_val_mapping[col] = value
                     if col.primary_key or col.unique is not None:
-                        unique[col] = col_val_mapping[col]
+                        unique_val_mapping[col] = col_val_mapping[col]
 
-        col_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in col_val_mapping.items()}
-        unique_value_mapping = {col.key: value for col, value in unique.items()}
-        if self.engine.name == 'mysql':
-            stmt = mysql_insert(model_item.__table__).values(**col_name_value_mapping).prefix_with('IGNORE')
+            col_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in col_val_mapping.items()}
+            unique_name_value_mapping: Final[dict[str, Type]] = {col.key: value for col, value in unique_val_mapping.items()}
+            if self.engine.name == 'mysql':
+                stmt = mysql_insert(model_item.__table__).values(**col_name_value_mapping).prefix_with('IGNORE')
 
-        if self.engine.name == 'postgresql':
-            stmt = postgres_insert(model_item.__table__).values(**col_name_value_mapping).on_conflict_do_nothing()
-        session.execute(stmt)
-        session.commit()
-        if return_item or self.debug_mode:
-            model_item = session.query(model_item.__table__).filter_by(**unique_value_mapping).first()
-            if not model_item:
-                raise NoResultFound(f'No item with values: "{unique_value_mapping}" persisted.')
-            return model_item
+            if self.engine.name == 'postgresql':
+                stmt = postgres_insert(model_item.__table__).values(**col_name_value_mapping).on_conflict_do_nothing()
+
+            session.execute(stmt)
+            session.commit()
+
+            if return_item or self.debug_mode:
+                model_item = session.query(model_item.__table__).filter_by(**unique_name_value_mapping).first()
+                if not model_item:
+                    raise NoResultFound(f'No item with unique values: "{unique_name_value_mapping}" persisted.')
+                return model_item
             
